@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<launch>
+
+  <arg name="public_sim" default="true"/>
+
+  <env name="LC_NUMERIC" value="C" />
+
+  <!-- Gazebo simulation -->
+  <!--include file="$(find tiago_gazebo)/launch/tiago_gazebo.launch"-->
+  <include file="$(find tiago_dual_gazebo)/launch/tiago_dual_gazebo.launch">
+	  <arg name="gzpose" value="-x 0.0 -y -0.5 -z 0.0 -R 0.0 -P 0.0 -Y 0.0"/>
+	  <arg name="end_effector_left" value="pal-gripper"/>
+	  <arg name="end_effector_right" value="pal-gripper"/>
+    <arg name="public_sim" value="$(arg public_sim)"/>
+    <arg name="world"      value="tabletop_cube"/>
+    <arg name="use_moveit_camera" value="true" />
+  </include>
+
+
+</launch>
