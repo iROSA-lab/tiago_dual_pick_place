@@ -20,7 +20,7 @@ Follow the official [tutorial](http://wiki.ros.org/Robots/TIAGo%2B%2B/Tutorials/
 This command starts both the Pick & Place server and client.
 
 ### Picking
-The Pick & Place pipeline requires an object the planning scene to work with.  
+The Pick & Place pipeline requires an object in the planning scene to work with.  
 There are two ways to pick: Either by specifing the name of the object in the scene or by specifying the grasp pose.
 
 #### Picking object by name
