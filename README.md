@@ -16,11 +16,11 @@ Follow the official [tutorial](http://wiki.ros.org/Robots/TIAGo%2B%2B/Tutorials/
 `roslaunch tiago_dual_pick_place pick_place_sim.launch`
 
 ### Launching Pick & Place pipeline
-`roslaunch tiago_dual_pick_place pick_place.launch`
+`roslaunch tiago_dual_pick_place pick_place.launch`  
 This command starts both the Pick & Place server and client.
 
 ### Picking
-The Pick & Place pipeline requires an object the planning scene to work with.
+The Pick & Place pipeline requires an object the planning scene to work with.  
 There are two ways to pick: Either by specifing the name of the object in the scene or by specifying the grasp pose.
 
 #### Picking object by name
@@ -31,7 +31,7 @@ To pick an object with the name 'Box_0': `rosservice call /pick_object 'Box_0'`
 #### Picking by grasp pose
 In this case a grasp pose (position and orientation) is directly given. Since the pipeline works with scene objects, a virtual object is constructed in the scene around the given pose. This object is then picked up.
 
-To grasp by pose, first call the pick service: `rosservice call /pick`
+To grasp by pose, first call the pick service: `rosservice call /pick`  
 Then publish message with pose of object:
 `rostopic pub /grasp/pose geometry_gs/PoseStamped "header:
   seq: 0
@@ -51,7 +51,7 @@ pose:
     w: 0.0"`
 
 ### Placing
-Placing requires a target pose and the object name of the object which is be placed.
+Placing requires a target pose and the object name of the object which is be placed.  
 Currently, the target pose is hard-wired to be the original pose of the object before picking up (this will of course change in the future).
 
 To place an object with the name 'Box_0': `rosservice call /place_object 'Box_0'`
