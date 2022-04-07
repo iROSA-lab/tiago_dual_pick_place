@@ -1,7 +1,7 @@
 <?xml version="1.0"?>
 <package>
   <name>tiago_dual_pick_place</name>
-  <version>0.9.0</version>
+  <version>1.0.0</version>
   <description>TIAGo++ pick and place pipeline</description>
 
   <author email="sammy.pfeiffer@pal-robotics.com">Sammy Pfeiffer</author>
@@ -35,5 +35,4 @@
   <run_depend>std_srvs</run_depend>
   <run_depend>tf2_ros</run_depend>
   <run_depend>tf2_geometry_msgs</run_depend>
-
 </package>
