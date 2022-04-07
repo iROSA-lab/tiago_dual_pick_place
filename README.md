@@ -13,7 +13,7 @@ Follow the official [tutorial](http://wiki.ros.org/Robots/TIAGo%2B%2B/Tutorials/
 
 ## Configuration
 ### Changing the arm
-This pipeline has been tested to work with the left arm and gripper. You can switch to the right arm by changing parameters in __launch/pick_place.launch__: simply replace all occurences of the word 'left' with 'right. Then, adjust the configuration files for the right arm in the __config__ folder to your needs (see below).
+This pipeline has been tested to work with the left arm and gripper. You can switch to the right arm by opening __launch/pick_place.launch__ and simply replacing all occurences of the word 'left' with 'right'.
 
 ### Configuring motion
 __config/pick_motions_left__ / __config/pick_motions_right__ define two positions for the left / right arm: a pre-grasp position and the final go-to position after picking up the object.
@@ -21,7 +21,7 @@ __config/pick_motions_left__ / __config/pick_motions_right__ define two position
 __config/pick_place_params_left__ / __config/pick_place_params_right__ define the tool frame, joints, gripper closure and grasp motion: direction of the grasp approach and direction to exiting the grasp (pre-grasp / post-grasp).
 
 ### Grasp generation
-By default a spherical grasp generator is used. This generator creates possible grasps on a hemisphere around the target pose. [dynamic reconfigure](http://wiki.ros.org/dynamic_reconfigurehttp://wiki.ros.org/dynamic_reconfigure) is used to configure the grasp generation. You can also statically change the parameters by modifying __cfg/Grasps.cfg__.
+By default a spherical grasp generator is used. This generator creates possible grasps on a hemisphere around the target pose. [dynamic reconfigure](http://wiki.ros.org/dynamic_reconfigurehttp://wiki.ros.org/dynamic_reconfigure) is used to configure the grasp generation. You can also change the parameters statically by modifying __cfg/Grasps.cfg__.
 
 ## Usage
 ### (Optional) Launching simulation
