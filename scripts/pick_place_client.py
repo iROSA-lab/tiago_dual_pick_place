@@ -48,11 +48,11 @@ for name in MoveItErrorCodes.__dict__.keys():
                 code = MoveItErrorCodes.__dict__[name]
                 moveit_error_dict[code] = name
 
-class SphericalService(object):
+class GraspsService(object):
         def __init__(self):
-                rospy.loginfo("Starting Spherical Grab Service")
+                rospy.loginfo("Starting Grasps Service")
                 self.pick_type = PickPlace()
-                rospy.loginfo("Finished SphericalService constructor")
+                rospy.loginfo("Finished GraspsService constructor")
                 self.place_gui = rospy.Service("/place", Empty, self.start_place)  # old place service, assumes object name to be 'part'
                 self.pick_gui = rospy.Service("/pick", Empty, self.start_pick)
                 self.pick_object = rospy.Service("/pick_object", PickPlaceObject, self.start_pick_object)
@@ -117,7 +117,6 @@ class PickPlace(object):
                         exit()
                 rospy.loginfo("Connected!")
                 rospy.sleep(1.0)
-                rospy.loginfo("Done initializing PickAruco.")
 
                 # place goal
                 self.place_g = PickUpPoseGoal()
@@ -173,14 +172,14 @@ class PickPlace(object):
                 if string_operation == "pick":
                 #     self.prepare_robot()
                 #     rospy.sleep(2.0)
-                    rospy.loginfo("spherical_grasp_gui: Waiting for a grasp pose")
+                    rospy.loginfo("Pick: Waiting for a grasp pose")
 
                     grasp_pose = rospy.wait_for_message('/grasp/pose', PoseStamped)
                     grasp_pose.header.frame_id = self.strip_leading_slash(grasp_pose.header.frame_id)
                     rospy.loginfo("Got: " + str(grasp_pose))
 
 
-                    rospy.loginfo("spherical_grasp_gui: Transforming from frame: " +
+                    rospy.loginfo("Pick: Transforming from frame: " +
                     grasp_pose.header.frame_id + " to 'base_footprint'")
                     ps = PoseStamped()
                     ps.pose.position = grasp_pose.pose.position
@@ -284,6 +283,6 @@ class PickPlace(object):
 
 if __name__ == '__main__':
         rospy.init_node('pick_place')
-        sphere = SphericalService()
+        srv = GraspsService()
         rospy.spin()
 

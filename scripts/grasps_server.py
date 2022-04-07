@@ -20,6 +20,7 @@
 #   * Sam Pfeiffer
 #   * Job van Dieten
 #   * Jordi Pages
+#   * Snehal Jauhri
 
 
 import rospy
@@ -42,7 +43,7 @@ from tf import transformations
 from tf.transformations import quaternion_from_euler, euler_from_quaternion, quaternion_about_axis, unit_vector, quaternion_multiply
 
 from dynamic_reconfigure.server import Server
-from tiago_dual_pick_place.cfg import SphericalGraspConfig
+from tiago_dual_pick_place.cfg import GraspsConfig
 
 def normalize(v):
     norm = np.linalg.norm(v)
@@ -109,13 +110,13 @@ def sort_by_height(sphere_poses):
     return sorted_list
 
 
-class SphericalGrasps(object):
+class Grasps(object):
     def __init__(self):
-        rospy.loginfo("Initializing SphericalGrasps...")
+        rospy.loginfo("Initializing Grasps...")
         # Get server parameters from param server by using dynamic reconfigure
         # This is an advantage as you can test your grasp configuration
         # dynamically
-        self.dyn_rec_srv = Server(SphericalGraspConfig, self.dyn_rec_callback)
+        self.dyn_rec_srv = Server(GraspConfig, self.dyn_rec_callback)
 
         # Setup Markers for debugging
         self.poses_pub = rospy.Publisher(
@@ -125,7 +126,7 @@ class SphericalGrasps(object):
         self.object_pub = rospy.Publisher(
             '/object_marker', Marker, latch=True)
 
-        rospy.loginfo("SphericalGrasps initialized!")
+        rospy.loginfo("Grasps initialized!")
 
     def dyn_rec_callback(self, config, level):
 
@@ -375,14 +376,17 @@ class SphericalGrasps(object):
 
         return g
 
-    def create_grasps_from_object_pose(self, object_pose):
+    def create_grasps_from_object_pose(self, object_pose, single=True):
         """
         :type object_pose: PoseStamped
         """
         tini = rospy.Time.now()
-        # sphere_poses = self.generate_grasp_poses(object_pose)
-        # TEMP: Only generate single grasp pose (the object pose with (optionally) an offset)
-        sphere_poses = self.generate_single_grasp_pose(object_pose)
+        if single:
+            # Only generate single grasp pose (the object pose with (optionally) an offset)
+            sphere_poses = self.generate_single_grasp_pose(object_pose)
+        else:
+            sphere_poses = self.generate_grasp_poses(object_pose)
+
         filtered_poses = filter_poses(sphere_poses, object_pose,
                                       filter_behind=False, filter_under=True)
         sorted_poses = sort_by_height(filtered_poses)
@@ -446,8 +450,8 @@ class SphericalGrasps(object):
         return g_trans
 
 if __name__ == '__main__':
-    rospy.init_node("spherical_grasps_server")
-    sg = SphericalGrasps()
+    rospy.init_node("grasps_server")
+    sg = Grasps()
     # rospy.spin()
 
     # For debugging pourposes

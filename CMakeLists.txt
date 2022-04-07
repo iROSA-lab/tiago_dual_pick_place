@@ -5,7 +5,6 @@ find_package(catkin REQUIRED COMPONENTS
   dynamic_reconfigure
   actionlib
   actionlib_msgs
-  aruco_ros
   geometry_msgs
   moveit_msgs
   rospy
@@ -15,7 +14,7 @@ find_package(catkin REQUIRED COMPONENTS
 
 
 generate_dynamic_reconfigure_options(
-  cfg/SphericalGrasp.cfg
+  cfg/Grasps.cfg
   )
 
 add_action_files(
@@ -46,7 +45,7 @@ include_directories(
 install(PROGRAMS
         scripts/pick_and_place_server.py
         scripts/pick_client.py
-        scripts/spherical_grasps_server.py
+        scripts/grasps_server.py
         DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION}
 )
 

@@ -23,7 +23,7 @@
 #   * Daljeet Nandha
 
 import rospy
-from spherical_grasps_server import SphericalGrasps
+from grasps_server import Grasps
 from actionlib import SimpleActionClient, SimpleActionServer
 from moveit_commander import PlanningSceneInterface
 from moveit_msgs.msg import Grasp, PickupAction, PickupGoal, PickupResult, MoveItErrorCodes
@@ -89,7 +89,7 @@ def createPlaceGoal(place_pose,
 class PickAndPlaceServer(object):
 	def __init__(self):
 		rospy.loginfo("Initalizing PickAndPlaceServer...")
-		self.sg = SphericalGrasps()
+		self.sg = Grasps()
 		rospy.loginfo("Connecting to pickup AS")
 		self.pickup_ac = SimpleActionClient('/pickup', PickupAction)
 		self.pickup_ac.wait_for_server()
@@ -115,6 +115,8 @@ class PickAndPlaceServer(object):
                 self.object_height = rospy.get_param('~object_height')
                 self.object_width = rospy.get_param('~object_width')
                 self.object_depth = rospy.get_param('~object_depth')
+                self.move_group_0 = rospy.get_param('~move_group_0')
+                self.move_group_1 = rospy.get_param('~move_group_1')
 
 		# Get the links of the end effector exclude from collisions
 		self.links_to_allow_contact = rospy.get_param('~links_to_allow_contact', None)
@@ -176,7 +178,7 @@ class PickAndPlaceServer(object):
 		:type goal: PickUpPoseGoal
 		"""
                 print("pick cb")
-		error_code = self.grasp_create_object(goal.object_pose)
+		error_code = self.grasp(goal.object_pose)
 		p_res = PickUpPoseResult()
 		p_res.error_code = error_code
 		if error_code != 1:
@@ -238,8 +240,7 @@ class PickAndPlaceServer(object):
 		self.wait_for_planning_scene_object(part)
 
                 # compute grasps
-                # TODO: instead of possible grasps take grasp from user
-		possible_grasps = self.sg.create_grasps_from_object_pose(object_pose)
+		possible_grasps = self.sg.create_grasps_from_object_pose(object_pose, single=False)
 		self.pickup_ac
 		goal = createPickupGoal(
 			"arm_left_torso", part, object_pose, possible_grasps, self.links_to_allow_contact)
@@ -257,7 +258,7 @@ class PickAndPlaceServer(object):
 
 		return result.error_code.val
 
-	def grasp_create_object(self, object_pose):
+	def grasp(self, object_pose):
 		rospy.loginfo("Removing any previous 'part' object")
 		self.scene.remove_attached_object("arm_left_tool_link")
 		self.scene.remove_world_object("part")
@@ -274,24 +275,12 @@ class PickAndPlaceServer(object):
 		self.clear_octomap_srv.call(EmptyRequest())
 
 		rospy.loginfo("Second%s", object_pose.pose)
-		table_pose = copy.deepcopy(object_pose)
-
-                #define a virtual table below the object
-                #table_height = object_pose.pose.position.z - self.object_width/2  
-                #table_width  = 1.8
-                #table_depth  = 0.5
-                #table_pose.pose.position.z += -(2*self.object_width)/2 -table_height/2
-                #table_height -= 0.008 #remove few milimeters to prevent contact between the object and the table
-
-		#self.scene.add_box("table", table_pose, (table_depth, table_width, table_height))
 
 		# # We need to wait for the object part to appear
 		self.wait_for_planning_scene_object()
-		#self.wait_for_planning_scene_object("table")
 
                 # compute grasps
-                # TODO: instead of possible grasps take grasp from user
-		possible_grasps = self.sg.create_grasps_from_object_pose(object_pose)
+		possible_grasps = self.sg.create_grasps_from_object_pose(object_pose, single=True)
 		self.pickup_ac
 		goal = createPickupGoal(
 			"arm_left_torso", "part", object_pose, possible_grasps, self.links_to_allow_contact)
