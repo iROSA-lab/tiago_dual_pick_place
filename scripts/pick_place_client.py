@@ -154,10 +154,51 @@ class PickPlace(object):
                 self.place_pose = copy.deepcopy(result.object_pose)
                 self.place_pose.pose.position.z += 0.05
 
+        def wait_for_pose(self, topic, timeout=None):
+                try:
+                    grasp_pose = rospy.wait_for_message(topic, PoseStamped, timeout=timeout)
+                except rospy.Exception as e:
+                    return None
+
+                grasp_pose.header.frame_id = self.strip_leading_slash(grasp_pose.header.frame_id)
+                rospy.loginfo("Got: " + str(grasp_pose))
+
+
+                rospy.loginfo("Pick: Transforming from frame: " +
+                grasp_pose.header.frame_id + " to 'base_footprint'")
+                ps = PoseStamped()
+                ps.pose.position = grasp_pose.pose.position
+                ps.pose.orientation = grasp_pose.pose.orientation
+                ps.header.stamp = self.tfBuffer.get_latest_common_time("base_footprint", grasp_pose.header.frame_id)
+                ps.header.frame_id = grasp_pose.header.frame_id
+                transform_ok = False
+
+                while not transform_ok and not rospy.is_shutdown():
+                        try:
+                                transform = self.tfBuffer.lookup_transform("base_footprint", 
+                                                                           ps.header.frame_id,
+                                                                           rospy.Time(0))
+                                ps_trans = do_transform_pose(ps, transform)
+                                transform_ok = True
+                        except tf2_ros.ExtrapolationException as e:
+                                rospy.logwarn(
+                                        "Exception on transforming point... trying again \n(" +
+                                        str(e) + ")")
+                                rospy.sleep(0.01)
+                                ps.header.stamp = self.tfBuffer.get_latest_common_time("base_footprint", grasp_pose.header.frame_id)
+                        rospy.loginfo("Setting pose")
+
+                return ps_trans
+
         def place_object(self, object_name):
                 rospy.loginfo("Start placing %s", object_name)
                 goal = PlaceObjectGoal()
-                goal.target_pose = self.place_pose
+
+                place_pose = self.wait_for_pose('/place/pose')
+                if place_g is None:
+                    place_pose = self.place_pose  # use previously stored pickup position
+
+                goal.target_pose = place_pose
                 goal.object_name = object_name
                 self.place_obj_as.send_goal_and_wait(goal)
                 rospy.loginfo("Place done!")
@@ -172,51 +213,19 @@ class PickPlace(object):
                 if string_operation == "pick":
                 #     self.prepare_robot()
                 #     rospy.sleep(2.0)
-                    rospy.loginfo("Pick: Waiting for a grasp pose")
+                        rospy.loginfo("Pick: Waiting for a grasp pose")
+                        grasp_ps = self.wait_for_pose('/grasp/pose')
 
-                    grasp_pose = rospy.wait_for_message('/grasp/pose', PoseStamped)
-                    grasp_pose.header.frame_id = self.strip_leading_slash(grasp_pose.header.frame_id)
-                    rospy.loginfo("Got: " + str(grasp_pose))
-
-
-                    rospy.loginfo("Pick: Transforming from frame: " +
-                    grasp_pose.header.frame_id + " to 'base_footprint'")
-                    ps = PoseStamped()
-                    ps.pose.position = grasp_pose.pose.position
-                    ps.pose.orientation = grasp_pose.pose.orientation
-                    ps.header.stamp = self.tfBuffer.get_latest_common_time("base_footprint", grasp_pose.header.frame_id)
-                    ps.header.frame_id = grasp_pose.header.frame_id
-                    transform_ok = False
-
-                while not transform_ok and not rospy.is_shutdown():
-                        try:
-                                transform = self.tfBuffer.lookup_transform("base_footprint", 
-                                                                           ps.header.frame_id,
-                                                                           rospy.Time(0))
-                                grasp_ps = do_transform_pose(ps, transform)
-                                transform_ok = True
-                        except tf2_ros.ExtrapolationException as e:
-                                rospy.logwarn(
-                                        "Exception on transforming point... trying again \n(" +
-                                        str(e) + ")")
-                                rospy.sleep(0.01)
-                                ps.header.stamp = self.tfBuffer.get_latest_common_time("base_footprint", grasp_pose.header.frame_id)
                         pick_g = PickUpPoseGoal()
-
-                if string_operation == "pick":
-
-                        rospy.loginfo("Setting cube pose")
                         pick_g.object_pose.pose = grasp_ps.pose
                         #pick_g.object_pose.pose.position = grasp_ps.pose.position
                         #pick_g.object_pose.pose.position.z -= 0.1*(1.0/2.0)
-
-                        rospy.loginfo("grasp pose in base_footprint:" + str(pick_g))
-
-                        pick_g.object_pose.header.frame_id = 'base_footprint'
                         #pick_g.object_pose.pose.orientation.w = 1.0
+                        rospy.loginfo("grasp pose in base_footprint:" + str(pick_g))
+                        pick_g.object_pose.header.frame_id = 'base_footprint'
+
                         self.detected_pose_pub.publish(pick_g.object_pose)
                         rospy.loginfo("Gonna pick:" + str(pick_g))
-
 
                         self.pick_as.send_goal_and_wait(pick_g)
                         rospy.loginfo("Done!")
