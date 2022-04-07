@@ -13,7 +13,7 @@ Follow the official [tutorial](http://wiki.ros.org/Robots/TIAGo%2B%2B/Tutorials/
 
 ## Configuration
 ### Changing the arm
-This pipeline has been tested to work with the left arm and gripper. You can switch to the right arm by opening __launch/pick_place.launch__ and simply replacing all occurences of the word 'left' with 'right'.
+This pipeline has been tested to work with the left arm and gripper. You can switch to the right arm by simply replacing all occurences of the word 'left' with 'right' in __launch/pick_place.launch__.
 
 ### Configuring motion
 __config/pick_motions_left__ and __config/pick_motions_right__ define two positions for the left / right arm: a pre-grasp position and the final go-to position after picking up the object.
