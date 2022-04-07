@@ -28,11 +28,11 @@ By default a spherical grasp generator is used. This generator creates possible 
 `roslaunch tiago_dual_pick_place pick_place_sim.launch`
 
 ### Launch Pick & Place pipeline
-`roslaunch tiago_dual_pick_place pick_place.launch`  
+`roslaunch tiago_dual_pick_place pick_place.launch`
+
 This command starts both the Pick & Place server and client.
 
 ### Pick
-The Pick & Place pipeline requires an object in the planning scene to work with.  
 There are two ways to pick: Either by specifing the name of the object in the scene or by specifying the grasp pose.
 
 #### Pick an object by name
@@ -43,8 +43,9 @@ To pick an object with the name 'Box_0': `rosservice call /pick_object 'Box_0'`
 #### Pick by grasp pose
 In this case a grasp pose (position and orientation) is directly given. Since the pipeline works with scene objects, a virtual object is constructed in the scene around the given pose and then picked up. Since this virtual object represents the grasp and not any actual object you can completely ignore the visualization.
 
-To grasp by pose, first call the pick service: `rosservice call /pick`  
-Then publish message with pose of object:
+To grasp by pose, first call the pick service: `rosservice call /pick`
+
+Then publish message with pose of object:  
 `rostopic pub /grasp/pose geometry_gs/PoseStamped "header:
   seq: 0
   stamp:
@@ -61,13 +62,14 @@ pose:
     y: 0.0
     z: 0.0
     w: 0.0"`
+    
 Change position and orientation for the desired grasp. These can also be defined in a different reference frame ('frame_id').
 
 ### Place
 Placing requires a target pose and the object name of the object which is be placed.  
 If no target pose is sent within 10 seconds, the original pose of the object (before being picking up) is used.
 
-(Optional) To specify the pose for placing:
+(Optional) To specify the pose for placing:  
 `rostopic pub /place/pose geometry_gs/PoseStamped "header:
   seq: 0
   stamp:
@@ -85,4 +87,5 @@ pose:
     z: 0.0
     w: 0.0"`
 
-To place an object with the name 'Box_0' at the specified pose (or alternatively the pickup pose): `rosservice call /place_object 'Box_0'`
+To place an object with the name 'Box_0' at the specified pose (or alternatively the pickup pose):  
+`rosservice call /place_object 'Box_0'`
