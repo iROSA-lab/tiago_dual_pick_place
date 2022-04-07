@@ -21,6 +21,7 @@
 #   * Job van Dieten
 #   * Jordi Pages
 #   * Snehal Jauhri
+#   * Daljeet Nandha
 
 
 import rospy
@@ -111,12 +112,13 @@ def sort_by_height(sphere_poses):
 
 
 class Grasps(object):
-    def __init__(self):
+    def __init__(self, grasp_frame):
         rospy.loginfo("Initializing Grasps...")
         # Get server parameters from param server by using dynamic reconfigure
         # This is an advantage as you can test your grasp configuration
         # dynamically
-        self.dyn_rec_srv = Server(GraspConfig, self.dyn_rec_callback)
+        self._grasp_postures_frame_id = grasp_frame
+        self.dyn_rec_srv = Server(GraspsConfig, self.dyn_rec_callback)
 
         # Setup Markers for debugging
         self.poses_pub = rospy.Publisher(
@@ -131,7 +133,6 @@ class Grasps(object):
     def dyn_rec_callback(self, config, level):
 
         rospy.loginfo("Received reconf call: " + str(config))
-        self._grasp_postures_frame_id = config["grasp_postures_frame_id"]
         self._gripper_joint_names = config["gripper_joint_names"]
         self._gripper_pre_grasp_positions = config[
             "gripper_pre_grasp_positions"]
