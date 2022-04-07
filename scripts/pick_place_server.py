@@ -153,12 +153,16 @@ class PickAndPlaceServer(object):
 		"""
 		:type goal: PickUpObjectGoal
 		"""
-                object_pose = self.get_object_pose(goal.object_name)
-		error_code = self.grasp_object(object_pose, part=goal.object_name)
 		p_res = PickUpObjectResult()
-		p_res.error_code = error_code
-                p_res.object_pose = object_pose
-		if error_code != 1:
+                object_pose = self.get_object_pose(goal.object_name)
+                if object_pose is None:
+                    rospy.logerr("Object with name %s not found", goal.object_name)
+                    p_res.error_code = 99999
+                else:
+                    p_res.error_code = self.grasp_object(object_pose, part=goal.object_name)
+                    p_res.object_pose = object_pose
+
+		if p_res.error_code != 1:
 			self.pick_obj_as.set_aborted(p_res)
 		else:
 			self.pick_obj_as.set_succeeded(p_res)
@@ -167,10 +171,9 @@ class PickAndPlaceServer(object):
 		"""
 		:type goal: PlaceObjectGoal
 		"""
-		error_code = self.place_object(goal.target_pose, part=goal.object_name)
 		p_res = PlaceObjectResult()
-		p_res.error_code = error_code
-		if error_code != 1:
+		p_res.error_code = self.place_object(goal.target_pose, part=goal.object_name)
+		if p_res.error_code != 1:
 			self.place_obj_as.set_aborted(p_res)
 		else:
 			self.place_obj_as.set_succeeded(p_res)
@@ -179,10 +182,9 @@ class PickAndPlaceServer(object):
 		"""
 		:type goal: PickUpPoseGoal
 		"""
-		error_code = self.grasp(goal.object_pose)
 		p_res = PickUpPoseResult()
-		p_res.error_code = error_code
-		if error_code != 1:
+		p_res.error_code = self.grasp(goal.object_pose)
+		if p_res.error_code != 1:
 			self.pick_as.set_aborted(p_res)
 		else:
 			self.pick_as.set_succeeded(p_res)
@@ -191,10 +193,9 @@ class PickAndPlaceServer(object):
 		"""
 		:type goal: PickUpPoseGoal
 		"""
-		error_code = self.place_object(goal.object_pose)
 		p_res = PickUpPoseResult()
-		p_res.error_code = error_code
-		if error_code != 1:
+		p_res.error_code = self.place_object(goal.object_pose)
+		if p_res.error_code != 1:
 			self.place_as.set_aborted(p_res)
 		else:
 			self.place_as.set_succeeded(p_res)
@@ -223,7 +224,7 @@ class PickAndPlaceServer(object):
                 rospy.loginfo("Looking for object: %s", object_name)
                 obj_poses = self.scene.get_object_poses([object_name])
                 if len(obj_poses) < 1:
-                    raise Exception("Grasp Object: Object not found")
+                    return None
                 object_pose = PoseStamped()
                 object_pose.header.frame_id = "base_footprint"
                 object_pose.pose = obj_poses[object_name]
@@ -232,7 +233,7 @@ class PickAndPlaceServer(object):
 
         def remove_part(self):
 		rospy.loginfo("Removing any previous 'part' object")
-                self.scene.remove_attached_object(self.sg.get_grasp_frame())
+                self.scene.remove_attached_object(self.grasp_frame)
 		self.scene.remove_world_object("part")
 		rospy.sleep(2.0)  # Removing is fast
 
@@ -252,7 +253,7 @@ class PickAndPlaceServer(object):
 
                 # compute grasps
 		possible_grasps = self.sg.create_grasps_from_object_pose(object_pose, single=False)
-		goal = createPickupGoal(move_group_1, part, object_pose, possible_grasps, self.links_to_allow_contact)
+		goal = createPickupGoal(self.move_group_1, part, object_pose, possible_grasps, self.links_to_allow_contact)
 		
                 rospy.loginfo("Sending goal")
                 self.pickup_ac.send_goal(goal)
@@ -285,7 +286,7 @@ class PickAndPlaceServer(object):
                 # compute grasps
 		possible_grasps = self.sg.create_grasps_from_object_pose(object_pose, single=True)
 		goal = createPickupGoal(
-			move_group_1, "part", object_pose, possible_grasps, self.links_to_allow_contact)
+			self.move_group_1, "part", object_pose, possible_grasps, self.links_to_allow_contact)
 		
                 rospy.loginfo("Sending goal")
                 self.pickup_ac.send_goal(goal)
@@ -308,7 +309,7 @@ class PickAndPlaceServer(object):
 		# Try only with arm
 		rospy.loginfo("Trying to place using only arm")
 		goal = createPlaceGoal(
-			object_pose, possible_placings, move_group_0, part, self.links_to_allow_contact)
+			object_pose, possible_placings, self.move_group_0, part, self.links_to_allow_contact)
 		rospy.loginfo("Sending goal")
 		self.place_ac.send_goal(goal)
 		rospy.loginfo("Waiting for result")
@@ -322,7 +323,7 @@ class PickAndPlaceServer(object):
 				"Trying to place with arm and torso")
 			# Try with arm and torso
 			goal = createPlaceGoal(
-				object_pose, possible_placings, move_group_1, part, self.links_to_allow_contact)
+				object_pose, possible_placings, self.move_group_1, part, self.links_to_allow_contact)
 			rospy.loginfo("Sending goal")
 			self.place_ac.send_goal(goal)
 			rospy.loginfo("Waiting for result")

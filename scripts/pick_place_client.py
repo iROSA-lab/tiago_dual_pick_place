@@ -42,6 +42,7 @@ import cv2
 from cv_bridge import CvBridge
 
 from moveit_msgs.msg import MoveItErrorCodes
+
 moveit_error_dict = {}
 for name in MoveItErrorCodes.__dict__.keys():
         if not name[:1] == '_':
@@ -157,14 +158,14 @@ class PickPlace(object):
         def wait_for_pose(self, topic, timeout=None):
                 try:
                     grasp_pose = rospy.wait_for_message(topic, PoseStamped, timeout=timeout)
-                except rospy.Exception as e:
+                except rospy.ROSException as e:
                     return None
 
                 grasp_pose.header.frame_id = self.strip_leading_slash(grasp_pose.header.frame_id)
                 rospy.loginfo("Got: " + str(grasp_pose))
 
 
-                rospy.loginfo("Pick: Transforming from frame: " +
+                rospy.loginfo("Transforming from frame: " +
                 grasp_pose.header.frame_id + " to 'base_footprint'")
                 ps = PoseStamped()
                 ps.pose.position = grasp_pose.pose.position
@@ -194,8 +195,9 @@ class PickPlace(object):
                 rospy.loginfo("Start placing %s", object_name)
                 goal = PlaceObjectGoal()
 
-                place_pose = self.wait_for_pose('/place/pose')
-                if place_g is None:
+                rospy.loginfo("Place: Waiting for a place pose")
+                place_pose = self.wait_for_pose('/place/pose', timeout=10.)
+                if place_pose is None:
                     place_pose = self.place_pose  # use previously stored pickup position
 
                 goal.target_pose = place_pose
@@ -211,8 +213,9 @@ class PickPlace(object):
         def pick_place(self, string_operation):
                 transform_ok = True
                 if string_operation == "pick":
-                #     self.prepare_robot()
-                #     rospy.sleep(2.0)
+                        #self.prepare_robot()
+                        #rospy.sleep(2.0)
+
                         rospy.loginfo("Pick: Waiting for a grasp pose")
                         grasp_ps = self.wait_for_pose('/grasp/pose')
 
