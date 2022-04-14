@@ -401,7 +401,7 @@ class Grasps(object):
         self.publish_object_marker(object_pose)
         return grasps
 
-    def create_placings_from_object_pose(self, posestamped):
+    def create_placings_from_object_pose(self, posestamped, simple_place):
         """ Create a list of PlaceLocation of the object rotated every 15deg"""
         place_locs = []
         pre_grasp_posture = JointTrajectory()
@@ -414,22 +414,34 @@ class Grasps(object):
             float(pos) for pos in self._gripper_pre_grasp_positions.split()]
         jtpoint.time_from_start = rospy.Duration(self._time_pre_grasp_posture)
         pre_grasp_posture.points.append(jtpoint)
-        # Generate all the orientations every step_degrees_yaw deg
-        for yaw_angle in np.arange(0.0, 2.0 * pi, radians(self._step_degrees_yaw)):
+
+        # If simple_place is set to True, just use the posestamped provided (normally the object_pose/grasp_pose itself)
+        if simple_place:
             pl = PlaceLocation()
             pl.place_pose = posestamped
-            newquat = quaternion_from_euler(0.0, 0.0, yaw_angle)
-            pl.place_pose.pose.orientation = Quaternion(
-                newquat[0], newquat[1], newquat[2], newquat[3])
-            # TODO: the frame is ignored, this will always be the frame of the gripper
-            # so arm_tool_link
             pl.pre_place_approach = self.createGripperTranslation(
                 Vector3(1.0, 0.0, 0.0))
             pl.post_place_retreat = self.createGripperTranslation(
                 Vector3(-1.0, 0.0, 0.0))
-
             pl.post_place_posture = pre_grasp_posture
             place_locs.append(pl)
+        else:
+            # Generate all the orientations every step_degrees_yaw deg
+            for yaw_angle in np.arange(0.0, 2.0 * pi, radians(self._step_degrees_yaw)):
+                pl = PlaceLocation()
+                pl.place_pose = posestamped
+                newquat = quaternion_from_euler(0.0, 0.0, yaw_angle)
+                pl.place_pose.pose.orientation = Quaternion(
+                    newquat[0], newquat[1], newquat[2], newquat[3])
+                # TODO: the frame is ignored, this will always be the frame of the gripper
+                # so arm_tool_link
+                pl.pre_place_approach = self.createGripperTranslation(
+                    Vector3(1.0, 0.0, 0.0))
+                pl.post_place_retreat = self.createGripperTranslation(
+                    Vector3(-1.0, 0.0, 0.0))
+
+                pl.post_place_posture = pre_grasp_posture
+                place_locs.append(pl)
 
         return place_locs
 

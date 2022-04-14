@@ -25,6 +25,7 @@ import rospy
 import time
 from tiago_dual_pick_place.msg import PlaceObjectAction, PlaceObjectGoal, PickUpObjectAction, PickUpObjectGoal, PickUpPoseAction, PickUpPoseGoal
 from tiago_dual_pick_place.srv import PickPlaceObject
+from tiago_dual_pick_place.srv import PickPlaceSimple
 from geometry_msgs.msg import PoseStamped, Pose
 from trajectory_msgs.msg import JointTrajectory, JointTrajectoryPoint
 from play_motion_msgs.msg import PlayMotionAction, PlayMotionGoal
@@ -54,26 +55,22 @@ class GraspsService(object):
                 rospy.loginfo("Starting Grasps Service")
                 self.pick_type = PickPlace()
                 rospy.loginfo("Finished GraspsService constructor")
-                self.place_gui = rospy.Service("/place", Empty, self.start_place)  # old place service, assumes object name to be 'part'
-                self.pick_gui = rospy.Service("/pick", Empty, self.start_pick)
+                self.place_gui = rospy.Service("/place", PickPlaceSimple, self.start_place)  # old place service, assumes object name to be 'part'
+                self.pick_gui = rospy.Service("/pick", PickPlaceSimple, self.start_pick)
                 self.pick_object = rospy.Service("/pick_object", PickPlaceObject, self.start_pick_object)
                 self.place_object = rospy.Service("/place_object", PickPlaceObject, self.start_place_object)
 
         def start_pick(self, req):
-                self.pick_type.pick_place("pick")
-                return {}
+                return self.pick_type.pick_place("pick")
 
         def start_place(self, req):
-                self.pick_type.pick_place("place")
-                return {}
+                return self.pick_type.pick_place("place")
 
         def start_pick_object(self, req):
-                self.pick_type.pick_object(req.object_name)
-                return {}
+                return self.pick_type.pick_object(req.object_name)
 
         def start_place_object(self, req):
-                self.pick_type.place_object(req.object_name)
-                return {}
+                return self.pick_type.place_object(req.object_name)
 
 class PickPlace(object):
         def __init__(self):
@@ -127,8 +124,8 @@ class PickPlace(object):
                 return s[1:] if s.startswith("/") else s
                 
         def pick_object(self, object_name):
-                #self.prepare_robot()
-                #rospy.sleep(2.0)
+                self.prepare_robot()
+                rospy.sleep(2.0)
                 rospy.loginfo("Start picking %s", object_name)
                 goal = PickUpObjectGoal()
                 goal.object_name = object_name
@@ -138,7 +135,7 @@ class PickPlace(object):
                 result = self.pick_obj_as.get_result()
                 if str(moveit_error_dict[result.error_code]) != "SUCCESS":
                         rospy.logerr("Failed to pick, not trying further")
-                        return
+                        return result.error_code
 
                 # Move torso to its maximum height
                 self.lift_torso()
@@ -153,7 +150,9 @@ class PickPlace(object):
 
                 # Save pose for placing
                 self.place_pose = copy.deepcopy(result.object_pose)
-                self.place_pose.pose.position.z += 0.05
+                self.place_pose.pose.position.z += 0.025
+
+                return result.error_code
 
         def wait_for_pose(self, topic, timeout=None):
                 try:
@@ -208,12 +207,13 @@ class PickPlace(object):
                 result = self.place_obj_as.get_result()
                 if str(moveit_error_dict[result.error_code]) != "SUCCESS":
                         rospy.logerr("Failed to place, not trying further")
-                        return
+                
+                return result.error_code
 
         def pick_place(self, string_operation):
                 transform_ok = True
                 if string_operation == "pick":
-                        #self.prepare_robot()
+                        # self.prepare_robot()
                         #rospy.sleep(2.0)
 
                         rospy.loginfo("Pick: Waiting for a grasp pose")
@@ -236,28 +236,34 @@ class PickPlace(object):
                         result = self.pick_as.get_result()
                         if str(moveit_error_dict[result.error_code]) != "SUCCESS":
                                 rospy.logerr("Failed to pick, not trying further")
-                                return
+                                return result.error_code
 
                         # Move torso to its maximum height
                         self.lift_torso()
 
                         # Raise arm
-                        rospy.loginfo("Moving arm to a safe pose")
-                        pmg = PlayMotionGoal()
-                        pmg.motion_name = 'pick_final_pose'
-                        pmg.skip_planning = False
-                        self.play_m_as.send_goal_and_wait(pmg)
-                        rospy.loginfo("Raise object done.")
+                        # rospy.loginfo("Moving arm to a safe pose")
+                        # pmg = PlayMotionGoal()
+                        # pmg.motion_name = 'pick_final_pose'
+                        # pmg.skip_planning = False
+                        # self.play_m_as.send_goal_and_wait(pmg)
+                        # rospy.loginfo("Raise object done.")
 
                         # Save pos for placing
-                        self.place_g = pick_g
-                        self.place_g.object_pose.pose.position.z += 0.05
+                        self.place_g = copy.deepcopy(pick_g)
+                        self.place_g.object_pose.pose.position.z += 0.025
+
+                        return result.error_code
 
                 elif string_operation == "place":
                         # Place the object back to its position
                         rospy.loginfo("Gonna place near where it was")
                         self.place_as.send_goal_and_wait(self.place_g)
                         rospy.loginfo("Done!")
+
+                        result = self.place_as.get_result()
+
+                        return result.error_code
 
         def lift_torso(self):
                 rospy.loginfo("Moving torso up")

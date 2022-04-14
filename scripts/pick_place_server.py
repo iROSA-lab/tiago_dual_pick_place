@@ -172,7 +172,7 @@ class PickAndPlaceServer(object):
 		:type goal: PlaceObjectGoal
 		"""
 		p_res = PlaceObjectResult()
-		p_res.error_code = self.place_object(goal.target_pose, part=goal.object_name)
+		p_res.error_code = self.place_object(goal.target_pose, part=goal.object_name, simple_place=False)
 		if p_res.error_code != 1:
 			self.place_obj_as.set_aborted(p_res)
 		else:
@@ -194,7 +194,7 @@ class PickAndPlaceServer(object):
 		:type goal: PickUpPoseGoal
 		"""
 		p_res = PickUpPoseResult()
-		p_res.error_code = self.place_object(goal.object_pose)
+		p_res.error_code = self.place_object(goal.object_pose, simple_place=True)
 		if p_res.error_code != 1:
 			self.place_as.set_aborted(p_res)
 		else:
@@ -255,16 +255,16 @@ class PickAndPlaceServer(object):
 		possible_grasps = self.sg.create_grasps_from_object_pose(object_pose, single=False)
 		goal = createPickupGoal(self.move_group_1, part, object_pose, possible_grasps, self.links_to_allow_contact)
 		
-                rospy.loginfo("Sending goal")
-                self.pickup_ac.send_goal(goal)
-                rospy.loginfo("Waiting for result")
-                self.pickup_ac.wait_for_result()
-                result = self.pickup_ac.get_result()
-                rospy.logdebug("Using torso result: " + str(result))
-                rospy.loginfo(
-                        "Pick result: " +
-                str(moveit_error_dict[result.error_code.val])
-                + "(" + str(result.error_code.val) + ")")
+		rospy.loginfo("Sending goal")
+		self.pickup_ac.send_goal(goal)
+		rospy.loginfo("Waiting for result")
+		self.pickup_ac.wait_for_result()
+		result = self.pickup_ac.get_result()
+		rospy.logdebug("Using torso result: " + str(result))
+		rospy.loginfo(
+				"Pick result: " +
+		str(moveit_error_dict[result.error_code.val])
+		+ "(" + str(result.error_code.val) + ")")
 
 		return result.error_code.val
 
@@ -301,11 +301,10 @@ class PickAndPlaceServer(object):
 
 		return result.error_code.val
 
-	def place_object(self, object_pose, part="part"):
+	def place_object(self, object_pose, part="part", simple_place=False):
 		rospy.loginfo("Clearing octomap")
 		self.clear_octomap_srv.call(EmptyRequest())
-		possible_placings = self.sg.create_placings_from_object_pose(
-			object_pose)
+		possible_placings = self.sg.create_placings_from_object_pose(object_pose, simple_place)
 		# Try only with arm
 		rospy.loginfo("Trying to place using only arm")
 		goal = createPlaceGoal(

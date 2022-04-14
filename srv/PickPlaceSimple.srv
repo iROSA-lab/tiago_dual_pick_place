@@ -1,4 +1,3 @@
-string object_name
 ---
 # Comes from moveit_msgs/MoveItErrorCodes
 int32 error_code

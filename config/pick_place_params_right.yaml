@@ -15,7 +15,7 @@ grasp_quality: 0.1
 # Gripper joint poses
 gripper_joint_names: "gripper_right_left_finger_joint gripper_right_right_finger_joint"
 # Closed position
-gripper_grasp_positions: "0.015 0.015"
+gripper_grasp_positions: "0.02 0.02"
 # Open position
 gripper_pre_grasp_positions: "0.038 0.038"
 

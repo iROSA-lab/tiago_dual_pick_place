@@ -1,0 +1,15 @@
+play_motion:
+  motions:
+    home_up_left:
+      joints: [arm_left_1_joint, arm_left_2_joint, arm_left_3_joint, arm_left_4_joint, arm_left_5_joint, arm_left_6_joint, arm_left_7_joint, torso_lift_joint]
+      points:
+        - time_from_start: 0
+          positions: [-1.1, -0.48, 2.714, 1.7095, -1.2012, 1.3898, 0, 0.34]
+        - time_from_start: 3
+          positions: [-1.1, 1.4679, 2.714, 1.7095, -1.2012, 1.3898, 0, 0.34]
+        - time_from_start: 4.5
+          positions: [-1.1, 1.4679, 2.714, 1.7095, -1.5708, 1.3898, 0, 0.34]
+      meta:
+        name: Home Up Left
+        usage: demo
+        description: Go home, Go full torso up, only left arm
