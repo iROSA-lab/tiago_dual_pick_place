@@ -93,5 +93,6 @@ pose:
 
 To place the default object at the specified pose (or alternatively the pickup pose):
 `rosservice call /place`
+
 To place an object with the name 'Box_0' at the specified pose (or alternatively the pickup pose):  
 `rosservice call /place_object 'Box_0'`
