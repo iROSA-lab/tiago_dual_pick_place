@@ -1,10 +1,14 @@
 # Tiago++ Pick & Place pipeline
 
 ## Description
-This is a fork of the Pal Robotics [tiago_pick_demo](https://github.com/pal-robotics/tiago_tutorials/tree/kinetic-devel/tiago_pick_demo). While the demo was made for the single arm Tiago and ROS Kinect, this package is for the (dual arm) Tiago++ and ROS Melodic!
+A ROS pick-and-place implementation for a Tiago++ mobile manipulation platform using [MoveIt!](http://wiki.ros.org/moveit) and [PlayMotion](http://wiki.ros.org/play_motion_builder).
+
+![Tiago++ Pick-Place](PickPlaceFast.gif)
+
+This repository is built on the Pal Robotics [tiago_pick_demo](https://github.com/pal-robotics/tiago_tutorials/tree/kinetic-devel/tiago_pick_demo). While the demo was made for the single arm Tiago and ROS Kinetic, this package is for the (dual arm) Tiago++ and ROS Melodic!
 
 Additional features:
-* No requirement for aruco
+* No requirement for aruco marker detection
 * Pick/Place of scene objects (by object name)
 * Pick/Place by sending a custom pose
 
@@ -66,7 +70,7 @@ pose:
 Change position and orientation for the desired grasp. These can also be defined in a different reference frame ('frame_id').
 
 ### Place
-Placing requires a target pose and the object name of the object which is be placed.  
+Placing requires (optionally) a target pose and the object name of the object which is to be placed.  
 If no target pose is sent within 10 seconds, the original pose of the object (before being picking up) is used.
 
 (Optional) To specify the pose for placing:  
@@ -87,5 +91,7 @@ pose:
     z: 0.0
     w: 0.0"`
 
+To place the default object at the specified pose (or alternatively the pickup pose):
+`rosservice call /place`
 To place an object with the name 'Box_0' at the specified pose (or alternatively the pickup pose):  
 `rosservice call /place_object 'Box_0'`
