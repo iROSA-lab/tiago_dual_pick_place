@@ -47,6 +47,7 @@ install(PROGRAMS
         scripts/pick_and_place_server.py
         scripts/pick_client.py
         scripts/grasps_server.py
+        scripts/arm_conf.py
         DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION}
 )
 

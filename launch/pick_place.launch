@@ -9,12 +9,6 @@
   <!-- Pick & place server -->
   <node name="pick_place_server" pkg="tiago_dual_pick_place" type="pick_place_server.py" output="screen">
       <rosparam command="load" file="$(find tiago_dual_pick_place)/config/pick_place_params.yaml" />
-      <param name="move_group_l0"  value="arm_left" />
-      <param name="move_group_l1"  value="arm_left_torso" />
-      <param name="grasp_frame_l"  value="arm_left_tool_link" />
-      <param name="move_group_r0"  value="arm_right" />
-      <param name="move_group_r1"  value="arm_right_torso" />
-      <param name="grasp_frame_r"  value="arm_right_tool_link" />
       <param name="object_width"  value="0.05" />
       <param name="object_height" value="0.10" />
       <param name="object_depth"  value="0.05" />

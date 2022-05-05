@@ -220,6 +220,7 @@ class PickPlace(object):
                         grasp_ps = self.wait_for_pose('/grasp/pose')
 
                         pick_g = PickUpPoseGoal()
+                        pick_g.left_right = 'left'  # TODO: decide which arm
                         pick_g.object_pose.pose = grasp_ps.pose
                         #pick_g.object_pose.pose.position = grasp_ps.pose.position
                         #pick_g.object_pose.pose.position.z -= 0.1*(1.0/2.0)
