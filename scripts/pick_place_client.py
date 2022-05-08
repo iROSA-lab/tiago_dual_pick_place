@@ -150,7 +150,7 @@ class PickPlace(object):
 
                 # Save pose for placing
                 self.place_pose = copy.deepcopy(result.object_pose)
-                self.place_pose.pose.position.z += 0.025
+                self.place_pose.pose.position.z += 0.0125
 
                 return result.error_code
 
@@ -251,7 +251,7 @@ class PickPlace(object):
 
                         # Save pos for placing
                         self.place_g = copy.deepcopy(pick_g)
-                        self.place_g.object_pose.pose.position.z += 0.025
+                        self.place_g.object_pose.pose.position.z += 0.0125
 
                         return result.error_code
 
