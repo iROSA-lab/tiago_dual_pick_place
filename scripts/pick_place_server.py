@@ -32,6 +32,7 @@ from geometry_msgs.msg import Pose, PoseStamped, PoseArray, Vector3Stamped, Vect
 from tiago_dual_pick_place.msg import PlaceObjectAction, PlaceObjectResult, PickUpObjectAction, PickUpObjectResult, PickUpPoseAction, PickUpPoseResult
 from moveit_msgs.srv import GetPlanningScene, GetPlanningSceneRequest, GetPlanningSceneResponse
 from std_srvs.srv import Empty, EmptyRequest
+from visualization_msgs.msg import Marker # To import marker for obstacle parts in the planning scene
 from copy import deepcopy
 from random import shuffle
 import copy
@@ -146,8 +147,20 @@ class PickAndPlaceServer(object):
 			execute_cb=self.place_obj_cb, auto_start=False)
 		self.place_obj_as.start()
 
+                # TODO: service to add obstacles/objects in the planning scene
+                self.obstacle_marker_sub = rospy.Subscriber('/table_marker', Marker, self.obstacle_marker_callback)
+                # add_part(object_pose, object_name)
+                # remove_part(object_name)
+
                 # Initialize grasp generator
 		self.sg = Grasps(self.grasp_frame)
+
+        def obstacle_marker_callback(self, obstacle_marker):
+                # TEMP this is supposed to be latched, one-time message
+                obstacle_pose = PoseStamped()
+                obstacle_pose.header = obstacle_marker.header
+                obstacle_pose.pose = obstacle_marker.pose
+                self.scene.add_box('table', obstacle_pose, (obstacle_marker.scale.x, obstacle_marker.scale.y, obstacle_marker.scale.z))
 
 	def pick_obj_cb(self, goal):
 		"""
@@ -231,16 +244,17 @@ class PickAndPlaceServer(object):
 		rospy.loginfo("Object pose: %s", object_pose.pose)
                 return object_pose
 
-        def remove_part(self):
-		rospy.loginfo("Removing any previous 'part' object")
-                self.scene.remove_attached_object(self.grasp_frame)
-		self.scene.remove_world_object("part")
+        def remove_part(self, object_name="part"):
+		rospy.loginfo("Removing any previous '"+str(object_name)+"' object")
+                if(object_name=="part"):
+                    self.scene.remove_attached_object(self.grasp_frame)
+		self.scene.remove_world_object(object_name)
 		rospy.sleep(2.0)  # Removing is fast
 
-        def add_part(self, object_pose):
-		rospy.loginfo("Adding new 'part' object")
-                #Add object description in scene
-		self.scene.add_box("part", object_pose, (self.object_depth, self.object_width, self.object_height))
+        def add_part(self, object_pose, object_name="part"):
+		rospy.loginfo("Adding new '"+str(object_name)+"' object")
+                # Add object description in scene
+		self.scene.add_box(object_name, object_pose, (self.object_depth, self.object_width, self.object_height))
 
 	def grasp_object(self, object_pose, part="part"):
 		rospy.loginfo("Clearing octomap")
