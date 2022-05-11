@@ -362,14 +362,14 @@ class Grasps(object):
         g.pre_grasp_approach.direction.vector.y = self._pre_grasp_direction_y  # NOQA
         g.pre_grasp_approach.direction.vector.z = self._pre_grasp_direction_z  # NOQA
         g.pre_grasp_approach.direction.header.frame_id = self._grasp_postures_frame_id  # NOQA
-        g.pre_grasp_approach.desired_distance = self._grasp_desired_distance  # NOQA
+        g.pre_grasp_approach.desired_distance = self._grasp_desired_distance/1.5  # NOQA
         g.pre_grasp_approach.min_distance = self._grasp_min_distance
         g.post_grasp_retreat = GripperTranslation()
         g.post_grasp_retreat.direction.vector.x = self._post_grasp_direction_x  # NOQA
         g.post_grasp_retreat.direction.vector.y = self._post_grasp_direction_y  # NOQA
         g.post_grasp_retreat.direction.vector.z = self._post_grasp_direction_z  # NOQA
         g.post_grasp_retreat.direction.header.frame_id = self._grasp_postures_frame_id  # NOQA
-        g.post_grasp_retreat.desired_distance = self._grasp_desired_distance  # NOQA
+        g.post_grasp_retreat.desired_distance = self._grasp_desired_distance/1.5  # NOQA
         g.post_grasp_retreat.min_distance = self._grasp_min_distance
 
         g.max_contact_force = self._max_contact_force
@@ -446,7 +446,6 @@ class Grasps(object):
         return place_locs
 
     def createGripperTranslation(self, direction_vector,
-                                 desired_distance=0.15,
                                  min_distance=0.01):
         """Returns a GripperTranslation message with the
          direction_vector and desired_distance and min_distance in it.
@@ -458,7 +457,7 @@ class Grasps(object):
         g_trans.direction.vector.x = direction_vector.x
         g_trans.direction.vector.y = direction_vector.y
         g_trans.direction.vector.z = direction_vector.z
-        g_trans.desired_distance = desired_distance
+        g_trans.desired_distance = self._grasp_desired_distance/1.5
         g_trans.min_distance = min_distance
         return g_trans
 

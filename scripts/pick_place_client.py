@@ -217,6 +217,7 @@ class PickPlace(object):
                         #rospy.sleep(2.0)
 
                         rospy.loginfo("Pick: Waiting for a grasp pose")
+                        rospy.sleep(0.75)
                         grasp_ps = self.wait_for_pose('/grasp/pose')
 
                         pick_g = PickUpPoseGoal()
