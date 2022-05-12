@@ -331,7 +331,7 @@ class Grasps(object):
             self._time_pre_grasp_posture + self._time_grasp_posture)
         jtpoint2 = JointTrajectoryPoint()
         jtpoint2.positions = [
-            float(pos) for pos in self._gripper_grasp_positions.split()]
+            float(pos) for pos in self._gripper_grasp_positions.split()] # TODO: Allow changing grasp widths
         jtpoint2.time_from_start = rospy.Duration(
             self._time_pre_grasp_posture +
             self._time_grasp_posture + self._time_grasp_posture_final)

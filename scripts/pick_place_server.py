@@ -32,7 +32,7 @@ from geometry_msgs.msg import Pose, PoseStamped, PoseArray, Vector3Stamped, Vect
 from tiago_dual_pick_place.msg import PlaceObjectAction, PlaceObjectResult, PickUpObjectAction, PickUpObjectResult, PickUpPoseAction, PickUpPoseResult
 from moveit_msgs.srv import GetPlanningScene, GetPlanningSceneRequest, GetPlanningSceneResponse
 from std_srvs.srv import Empty, EmptyRequest
-from visualization_msgs.msg import Marker # To import marker for obstacle parts in the planning scene
+from visualization_msgs.msg import Marker, MarkerArray # To import marker for obstacle parts in the planning scene
 from copy import deepcopy
 from random import shuffle
 import copy
@@ -147,18 +147,17 @@ class PickAndPlaceServer(object):
 			execute_cb=self.place_obj_cb, auto_start=False)
 		self.place_obj_as.start()
 
-                # TODO: Add obstacles/objects in the planning scene in the same call as 'pick'!!!
-                self.obstacle_marker_sub = rospy.Subscriber('/table_marker', Marker, self.obstacle_marker_callback)
+		# TODO: Add obstacles/objects in the planning scene in the same call as 'pick'!!!
+		self.obj_marker_sub = rospy.Subscriber('/obj_markers', MarkerArray, self.obj_marker_callback)
 
-                # Initialize grasp generator
+		# Initialize grasp generator
 		self.sg = Grasps(self.grasp_frame)
 
-        def obstacle_marker_callback(self, obstacle_marker):
-                # TEMP this is supposed to be latched, one-time message
-                self.obstacle_pose = PoseStamped()
-                self.obstacle_pose.header = obstacle_marker.header
-                self.obstacle_pose.pose = obstacle_marker.pose
-                self.obstacle_dimensions = (obstacle_marker.scale.x, obstacle_marker.scale.y, obstacle_marker.scale.z)
+        def obj_marker_callback(self, obj_markers):
+                self.obj_pose = PoseStamped()
+                self.obj_pose.header = obj_markers.markers[0].header
+                self.obj_pose.pose = obj_markers.markers[0].pose
+                self.obj_dimensions = (obj_markers.markers[0].scale.x, obj_markers.markers[0].scale.y, obj_markers.markers[0].scale.z)
 
 	def pick_obj_cb(self, goal):
 		"""
@@ -280,15 +279,10 @@ class PickAndPlaceServer(object):
 		return result.error_code.val
 
 	def grasp(self, object_pose):
-                # create scene object at pose of grasp
-                self.remove_part()
-                # Also remove any old obstacles/tables (these will be added again as per the current grasp call)
-                self.scene.remove_world_object("table")
-                self.add_part(object_pose)
-                if (self.obstacle_pose):
-                        # Also add table obstacle
-                        self.scene.add_box("table", self.obstacle_pose, self.obstacle_dimensions)
-                        self.wait_for_planning_scene_object("table")
+		# create scene object at pose of grasp
+		self.remove_part()
+		# Also remove any old obstacles/tables (these will be added again as per the current grasp call)
+		self.scene.remove_world_object("table")
 
 		rospy.loginfo("Object pose: %s", object_pose.pose)
 
@@ -296,6 +290,13 @@ class PickAndPlaceServer(object):
 		self.clear_octomap_srv.call(EmptyRequest())
 
 		rospy.loginfo("Second%s", object_pose.pose)
+
+		self.add_part(object_pose)
+		# grasp_pose = rospy.wait_for_message('/obj_markers', MarkerArray)
+		if (self.obj_pose):
+				# Also add table obstacle
+				self.scene.add_box("table", self.obj_pose, self.obj_dimensions)
+				self.wait_for_planning_scene_object("table")
 
 		# We need to wait for the object 'part' to appear
 		self.wait_for_planning_scene_object()
