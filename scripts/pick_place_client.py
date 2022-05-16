@@ -141,6 +141,7 @@ class PickPlace(object):
                 self.lift_torso()
 
                 # Raise arm
+                rospy.sleep(0.5)
                 rospy.loginfo("Moving arm to a safe pose")
                 pmg = PlayMotionGoal()
                 pmg.motion_name = 'pick_final_pose'
@@ -235,20 +236,22 @@ class PickPlace(object):
                         rospy.loginfo("Done!")
 
                         result = self.pick_as.get_result()
-                        if str(moveit_error_dict[result.error_code]) != "SUCCESS":
-                                rospy.logerr("Failed to pick, not trying further")
-                                return result.error_code
+                        if str(moveit_error_dict[result.error_code]) != "SUCCESS":                                
+                                # if INVALIDATED_BY_ENVIRONMENT_CHANGE, just continue # TODO: Try to find out why this error occurs
+                                if str(moveit_error_dict[result.error_code]) != "MOTION_PLAN_INVALIDATED_BY_ENVIRONMENT_CHANGE":
+                                        rospy.logerr("Failed to pick, not trying further")
+                                        return result.error_code
 
                         # Move torso to its maximum height
-                        self.lift_torso()
+                        # self.lift_torso()
 
                         # Raise arm
-                        # rospy.loginfo("Moving arm to a safe pose")
-                        # pmg = PlayMotionGoal()
-                        # pmg.motion_name = 'pick_final_pose'
-                        # pmg.skip_planning = False
-                        # self.play_m_as.send_goal_and_wait(pmg)
-                        # rospy.loginfo("Raise object done.")
+                        rospy.loginfo("Moving arm to a safe pose")
+                        pmg = PlayMotionGoal()
+                        pmg.motion_name = 'pick_final_pose'
+                        pmg.skip_planning = False
+                        self.play_m_as.send_goal_and_wait(pmg)
+                        rospy.loginfo("Raise object done.")
 
                         # Save pos for placing
                         self.place_g = copy.deepcopy(pick_g)

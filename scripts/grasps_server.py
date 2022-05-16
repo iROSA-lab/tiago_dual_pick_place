@@ -369,7 +369,7 @@ class Grasps(object):
         g.post_grasp_retreat.direction.vector.y = self._post_grasp_direction_y  # NOQA
         g.post_grasp_retreat.direction.vector.z = self._post_grasp_direction_z  # NOQA
         g.post_grasp_retreat.direction.header.frame_id = self._grasp_postures_frame_id  # NOQA
-        g.post_grasp_retreat.desired_distance = self._grasp_desired_distance/1.5  # NOQA
+        g.post_grasp_retreat.desired_distance = self._grasp_desired_distance/1.2  # NOQA
         g.post_grasp_retreat.min_distance = self._grasp_min_distance
 
         g.max_contact_force = self._max_contact_force
@@ -457,7 +457,7 @@ class Grasps(object):
         g_trans.direction.vector.x = direction_vector.x
         g_trans.direction.vector.y = direction_vector.y
         g_trans.direction.vector.z = direction_vector.z
-        g_trans.desired_distance = self._grasp_desired_distance/1.5
+        g_trans.desired_distance = self._grasp_desired_distance/1.2
         g_trans.min_distance = min_distance
         return g_trans
 

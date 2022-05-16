@@ -280,9 +280,10 @@ class PickAndPlaceServer(object):
 
 	def grasp(self, object_pose):
 		# create scene object at pose of grasp
-		self.remove_part()
+				
 		# Also remove any old obstacles/tables (these will be added again as per the current grasp call)
-		self.scene.remove_world_object("table")
+		self.remove_part()
+		self.scene.remove_world_object() # NOTE: this removes everything!
 
 		rospy.loginfo("Object pose: %s", object_pose.pose)
 
@@ -291,12 +292,30 @@ class PickAndPlaceServer(object):
 
 		rospy.loginfo("Second%s", object_pose.pose)
 
+		# Get all objects to be used for planning using an object Marker Array
+		obj_markers = rospy.wait_for_message('/obj_markers', MarkerArray)
+		for marker in obj_markers.markers:
+			obj_id = marker.id
+			obj_pose = PoseStamped()
+			obj_pose.header = marker.header
+			obj_pose.pose = marker.pose
+			obj_dimensions = (marker.scale.x, marker.scale.y, marker.scale.z)
+			if obj_id == 42:
+				# this is the main 'part' object, skippp TODO
+				pass
+				# part_pose = obj_pose
+				# part_dimensions = obj_dimensions
+			else:
+				self.scene.add_box("obj"+str(obj_id), obj_pose, obj_dimensions)
+		# Add 'part' last (main grasping object)
+		# self.scene.add_box("part", part_pose, part_dimensions)
+		
+		# OLD. TODO: Cleanup
 		self.add_part(object_pose)
-		# grasp_pose = rospy.wait_for_message('/obj_markers', MarkerArray)
-		if (self.obj_pose):
-				# Also add table obstacle
-				self.scene.add_box("table", self.obj_pose, self.obj_dimensions)
-				self.wait_for_planning_scene_object("table")
+		# if (self.obj_pose):
+		# 		# Also add table obstacle
+		# 		self.scene.add_box("table", self.obj_pose, self.obj_dimensions)
+		# 		self.wait_for_planning_scene_object("table")
 
 		# We need to wait for the object 'part' to appear
 		self.wait_for_planning_scene_object()
@@ -336,27 +355,30 @@ class PickAndPlaceServer(object):
 		# rospy.loginfo(str(moveit_error_dict[result.error_code.val]))
 
 		# if str(moveit_error_dict[result.error_code.val]) != "SUCCESS":
-                rospy.loginfo(
-                        "Trying to place with arm and torso")
-                # Try with arm and torso
-                goal = createPlaceGoal(
-                        object_pose, possible_placings, self.move_group_1, part, self.links_to_allow_contact)
-                rospy.loginfo("Sending goal")
-                self.place_ac.send_goal(goal)
-                rospy.loginfo("Waiting for result")
+		rospy.loginfo(
+				"Trying to place with arm and torso")
+		rospy.loginfo(
+				"MOVE GROUP is:" + str(self.move_group_1))
+		# Try with arm and torso
+		goal = createPlaceGoal(
+				object_pose, possible_placings, self.move_group_1, part, self.links_to_allow_contact)
+		rospy.loginfo("Sending goal")
+		self.place_ac.send_goal(goal)
+		rospy.loginfo("Waiting for result")
 
-                self.place_ac.wait_for_result()
-                result = self.place_ac.get_result()
-                rospy.logerr(str(moveit_error_dict[result.error_code.val]))
+		self.place_ac.wait_for_result()
+		result = self.place_ac.get_result()
+		rospy.logerr(str(moveit_error_dict[result.error_code.val]))
 		
                 # print result
 		rospy.loginfo(
 			"Result: " +
 			str(moveit_error_dict[result.error_code.val]))
-                rospy.loginfo("Removing previous object: %s", part)
-		self.scene.remove_world_object(part)
-                # Also remove any old obstacles/tables (these will be added again as per the current grasp call)
-                self.scene.remove_world_object("table")
+			
+        #         rospy.loginfo("Removing previous object: %s", part)
+		# self.scene.remove_world_object(part)
+        #         # Also remove any old obstacles/tables (these will be added again as per the current grasp call)
+        #         self.scene.remove_world_object() # NOTE: this removes everything
 
 		return result.error_code.val
 
