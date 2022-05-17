@@ -253,15 +253,22 @@ class PickPlace(object):
                         self.play_m_as.send_goal_and_wait(pmg)
                         rospy.loginfo("Raise object done.")
 
-                        # Save pos for placing
+                        # Save pose for optional immediate placing back
                         self.place_g = copy.deepcopy(pick_g)
-                        self.place_g.object_pose.pose.position.z += 0.0125
+                        self.place_g.object_pose.pose.position.z += 0.0125 # Add small offset to not crash into stuff
 
                         return result.error_code
 
                 elif string_operation == "place":
-                        # Place the object back to its position
-                        rospy.loginfo("Gonna place near where it was")
+                        rospy.loginfo("Place: Waiting for a place pose")
+                        place_pose = self.wait_for_pose('/place/pose', timeout=1.0)
+                        if place_pose is None:
+                                rospy.loginfo("No place pose set. Gonna try placing back where it was")
+                        else:
+                                rospy.loginfo("Received a place pose")
+                                self.place_g.object_pose.pose = place_pose.pose
+                                self.place_g.object_pose.pose.position.z += 0.0125 # Add small offset to not crash into stuff
+
                         self.place_as.send_goal_and_wait(self.place_g)
                         rospy.loginfo("Done!")
 

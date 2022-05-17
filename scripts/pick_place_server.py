@@ -281,7 +281,7 @@ class PickAndPlaceServer(object):
 	def grasp(self, object_pose):
 		# create scene object at pose of grasp
 				
-		# Also remove any old obstacles/tables (these will be added again as per the current grasp call)
+		# remove any old obstacles/tables (these will be added again as per the current grasp call)
 		self.remove_part()
 		self.scene.remove_world_object() # NOTE: this removes everything!
 
@@ -336,11 +336,41 @@ class PickAndPlaceServer(object):
                 str(moveit_error_dict[result.error_code.val])
                 + "(" + str(result.error_code.val) + ")")
 
+		# Remove objects that aren't necessary anymore
+		for marker in obj_markers.markers:
+			obj_id = marker.id
+			if obj_id == 42:
+				# this is the main 'part' object, skippp
+				pass
+				# part_pose = obj_pose
+				# part_dimensions = obj_dimensions
+			else:
+				self.scene.remove_world_object("obj"+str(obj_id))
+
 		return result.error_code.val
 
 	def place_object(self, object_pose, part="part", simple_place=False):
+
 		rospy.loginfo("Clearing octomap")
 		self.clear_octomap_srv.call(EmptyRequest())
+
+		# Get all objects to be used for planning using an object Marker Array
+		obj_markers = rospy.wait_for_message('/obj_markers', MarkerArray)
+		for marker in obj_markers.markers:
+			obj_id = marker.id
+			obj_pose = PoseStamped()
+			obj_pose.header = marker.header
+			obj_pose.pose = marker.pose
+			obj_dimensions = (marker.scale.x, marker.scale.y, marker.scale.z)
+			if obj_id == 42:
+				# this is the main 'part' object, skippp TODO
+				pass
+				# part_pose = obj_pose
+				# part_dimensions = obj_dimensions
+			else:
+				self.scene.add_box("obj"+str(obj_id), obj_pose, obj_dimensions)
+				self.wait_for_planning_scene_object("obj"+str(obj_id))
+		
 		possible_placings = self.sg.create_placings_from_object_pose(object_pose, simple_place)
 		# # Try only with arm
 		# rospy.loginfo("Trying to place using only arm")
