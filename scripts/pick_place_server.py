@@ -166,7 +166,7 @@ class PickAndPlaceServer(object):
                 """
                 p_res = PickUpObjectResult()
                 arm_conf = self.arm_conf_r if goal.left_right == 'right' else self.arm_conf_l
-                object_pose = self._get_object_pose(goal.object_name)
+                object_pose = self.get_object_pose(goal.object_name)
                 if object_pose is None:
                     rospy.logerr("Object with name %s not found", goal.object_name)
                     p_res.error_code = 99999
