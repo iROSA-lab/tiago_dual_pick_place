@@ -27,6 +27,7 @@ add_action_files(
 add_service_files(
   FILES
   PickPlaceObject.srv
+  PickPlaceObjects.srv
   PickPlaceSimple.srv
 )
 
