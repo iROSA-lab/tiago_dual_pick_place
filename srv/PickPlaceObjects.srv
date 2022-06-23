@@ -1,0 +1,5 @@
+string left_object_name
+string right_object_name
+---
+# Comes from moveit_msgs/MoveItErrorCodes
+int32 error_code

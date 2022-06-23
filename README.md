@@ -16,13 +16,10 @@ Additional features:
 Follow the official [tutorial](http://wiki.ros.org/Robots/TIAGo%2B%2B/Tutorials/Installation/InstallUbuntuAndROS).
 
 ## Configuration
-### Changing the arm
-This pipeline has been tested to work with the left arm and gripper. You can switch to the right arm by simply replacing all occurences of the word 'left' with 'right' in __launch/pick_place.launch__.
-
 ### Configuring motion
-__config/pick_motions_left__ / __config/pick_motions_right__: defines a pre-grasp position and the final go-to position after picking up the object.
+__config/pick_motions__: defines a pre-grasp position and the final go-to position after picking up the object.
 
-__config/pick_place_params_left__ / __config/pick_place_params_right__: defines the tool frame, joints, gripper closure, direction of the grasp approach and direction for exiting the grasp (pre-grasp / post-grasp).
+__config/pick_place_params__: defines the tool frame, joints, gripper closure, direction of the grasp approach and direction for exiting the grasp (pre-grasp / post-grasp).
 
 ### Grasp generation
 By default a spherical grasp generator is used. This generator creates possible grasps on a hemisphere around the target pose. [dynamic reconfigure](http://wiki.ros.org/dynamic_reconfigurehttp://wiki.ros.org/dynamic_reconfigure) is used to configure the grasp generation. You can also change the parameters statically by modifying __cfg/Grasps.cfg__.
@@ -42,7 +39,11 @@ There are two ways to pick: Either by specifing the name of the object in the sc
 #### Pick an object by name
 In this case the object to be grasped has to exist in the scene. The object could be a virtual copy of an object in the real world.
 
-To pick an object with the name 'Box_0': `rosservice call /pick_object 'Box_0'`
+To pick an object with the name 'Box_0' using the left arm: `rosservice call /pick_object left Box_0`
+
+To pick an object with the name 'Box_1' using the right arm: `rosservice call /pick_object right Box_0`
+
+To pick two objects, first object with left arm, second object with right arm: `rosservice call /pick_objects Box_0 Box_1`
 
 #### Pick by grasp pose
 In this case a grasp pose (position and orientation) is directly given. Since the pipeline works with scene objects, a virtual object is constructed in the scene around the given pose and then picked up. Since this virtual object represents the grasp and not any actual object you can completely ignore the visualization.
