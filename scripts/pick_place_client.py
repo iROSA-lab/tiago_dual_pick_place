@@ -23,8 +23,8 @@
 
 import rospy
 import time
-from tiago_dual_pick_place.msg import PlaceObjectAction, PlaceObjectGoal, PickUpObjectAction, PickUpObjectGoal, PickUpPoseAction, PickUpPoseGoal
-from tiago_dual_pick_place.srv import PickPlaceObject, PickPlaceObjects, PickPlaceSimple
+from tiago_dual_pick_place.msg import PlaceAutoObjectAction, PlaceAutoObjectGoal, PickUpObjectAction, PickUpObjectGoal, PickPlacePoseAction, PickPlacePoseGoal
+from tiago_dual_pick_place.srv import PickPlaceObject, PickPlaceObjects, PickPlaceAutoObject, PickPlaceSimple
 from geometry_msgs.msg import PoseStamped, Pose
 from trajectory_msgs.msg import JointTrajectory, JointTrajectoryPoint
 from play_motion_msgs.msg import PlayMotionAction, PlayMotionGoal
@@ -58,7 +58,7 @@ class GraspsService(object):
                 self.pick_gui = rospy.Service("/pick", PickPlaceSimple, self.start_pick_simple)
                 self.pick_object = rospy.Service("/pick_object", PickPlaceObject, self.start_pick_object)
                 self.pick_objects = rospy.Service("/pick_objects", PickPlaceObjects, self.start_pick_objects)
-                self.place_object = rospy.Service("/place_object", PickPlaceObject, self.start_place_object)
+                self.place_object = rospy.Service("/place_object", PickPlaceAutoObject, self.start_place_object)
 
         def start_pick_simple(self, req):
                 return self.pick_type.pick_simple(req.left_right)
@@ -73,7 +73,7 @@ class GraspsService(object):
                 return self.pick_type.pick_objects(req.left_object_name, req.right_object_name)
 
         def start_place_object(self, req):
-                return self.pick_type.place_object(req.object_name, req.left_right)
+                return self.pick_type.place_object(req.object_name)
 
 class PickPlace(object):
         def __init__(self):
@@ -83,13 +83,13 @@ class PickPlace(object):
                 self.tf_l = tf2_ros.TransformListener(self.tfBuffer)
                 
                 rospy.loginfo("Waiting for /pickup_pose AS...")
-                self.pick_as = SimpleActionClient('/pickup_pose', PickUpPoseAction)
+                self.pick_as = SimpleActionClient('/pickup_pose', PickPlacePoseAction)
                 time.sleep(1.0)
                 if not self.pick_as.wait_for_server(rospy.Duration(20)):
                         rospy.logerr("Could not connect to /pickup_pose AS")
                         exit()
                 rospy.loginfo("Waiting for /place_pose AS...")
-                self.place_as = SimpleActionClient('/place_pose', PickUpPoseAction)
+                self.place_as = SimpleActionClient('/place_pose', PickPlacePoseAction)
                 self.place_as.wait_for_server()
 
                 self.pick_obj_as = SimpleActionClient('/pickup_object', PickUpObjectAction)
@@ -98,7 +98,7 @@ class PickPlace(object):
                         rospy.logerr("Could not connect to /pickup_object AS")
                         exit()
                 rospy.loginfo("Waiting for /place_object AS...")
-                self.place_obj_as = SimpleActionClient('/place_object', PlaceObjectAction)
+                self.place_obj_as = SimpleActionClient('/place_object', PlaceAutoObjectAction)
                 self.place_obj_as.wait_for_server()
 
                 rospy.loginfo("Setting publishers to torso and head controller...")
@@ -119,19 +119,22 @@ class PickPlace(object):
                 rospy.loginfo("Connected!")
                 rospy.sleep(1.0)
 
-                # place goal
-                # TODO: simplify
-                # TODO: different for left/right arm
-                self.place_g = PickUpPoseGoal()  # for pick/place simple
-                self.place_pose = PoseStamped()  # for pick/place object
+                # TODO: unify
+                # PickPlacePoseGoal for pick/place simple
+                self.place_g = {}
+                # PoseStamped for pick/place object
+                self.place_pose = {}
 
         def strip_leading_slash(self, s):
                 return s[1:] if s.startswith("/") else s
                 
         # TODO: decide which arm by some sort of optimization
         def pick_object(self, object_name, left_right):
-                #self.prepare_robot(left_right)
-                #rospy.sleep(2.0)
+                # Move torso to its maximum height
+                self.lift_torso()
+
+                self.prepare_robot(left_right)
+                rospy.sleep(2.0)
 
                 rospy.loginfo("Start picking %s", object_name)
                 goal = PickUpObjectGoal()
@@ -145,9 +148,6 @@ class PickPlace(object):
                         rospy.logerr("Failed to pick, not trying further")
                         return result.error_code
 
-                # Move torso to its maximum height
-                self.lift_torso()
-
                 # Raise arm
                 rospy.loginfo("Moving arm to a safe pose")
                 pmg = PlayMotionGoal()
@@ -157,32 +157,34 @@ class PickPlace(object):
                 rospy.loginfo("Raise object done.")
 
                 # Save pose for placing
-                # TODO: different for left/right arm
-                self.place_pose = copy.deepcopy(result.object_pose)
-                self.place_pose.pose.position.z += 0.025
+                self.place_pose[object_name] = copy.deepcopy(result.object_pose)
+                self.place_pose[object_name].pose.position.z += 0.025
 
                 return result.error_code
 
         def pick_objects(self, left_object_name, right_object_name):
+                # Move torso to its maximum height
+                self.lift_torso()
+
                 objects = {'left': left_object_name, 'right': right_object_name}
                 for lr in sorted(objects):
-                    #self.prepare_robot(lr)
-                    #rospy.sleep(2.0)
+                    self.prepare_robot(lr)
 
+                for lr in sorted(objects):
                     rospy.loginfo("Start picking %s with %s arm", objects[lr], lr)
                     goal = PickUpObjectGoal()
                     goal.left_right = lr
                     goal.object_name = objects[lr]
                     self.pick_obj_as.send_goal_and_wait(goal)
-                    rospy.loginfo("Pick done!")
+                    rospy.loginfo("Pick %s done!", lr)
 
-                result = self.pick_obj_as.get_result()
-                if str(moveit_error_dict[result.error_code]) != "SUCCESS":
+                    result = self.pick_obj_as.get_result()
+                    if str(moveit_error_dict[result.error_code]) != "SUCCESS":
                         rospy.logerr("Failed to pick, not trying further")
                         return result.error_code
-
-                # Move torso to its maximum height
-                self.lift_torso()
+                    # Save pose for placing
+                    self.place_pose[objects[lr]] = copy.deepcopy(result.object_pose)
+                    self.place_pose[objects[lr]].pose.position.z += 0.025
 
                 # Raise left/right arm
                 rospy.loginfo("Moving arms to a safe pose")
@@ -192,11 +194,6 @@ class PickPlace(object):
                     pmg.skip_planning = False
                     self.play_m_as.send_goal_and_wait(pmg)
                     rospy.loginfo("Raise object done.")
-
-                # Save pose for placing
-                # TODO: different for left/right arm
-                self.place_pose = copy.deepcopy(result.object_pose)
-                self.place_pose.pose.position.z += 0.025
 
                 return result.error_code
 
@@ -236,26 +233,6 @@ class PickPlace(object):
 
                 return ps_trans
 
-        def place_object(self, object_name):
-                rospy.loginfo("Start placing %s", object_name)
-                goal = PlaceObjectGoal()
-
-                rospy.loginfo("Place: Waiting for a place pose")
-                place_pose = self.wait_for_pose('/place/pose', timeout=10.)
-                if place_pose is None:
-                    place_pose = self.place_pose  # use previously stored pickup position
-
-                goal.target_pose = place_pose
-                goal.object_name = object_name
-                self.place_obj_as.send_goal_and_wait(goal)
-                rospy.loginfo("Place done!")
-
-                result = self.place_obj_as.get_result()
-                if str(moveit_error_dict[result.error_code]) != "SUCCESS":
-                        rospy.logerr("Failed to place, not trying further")
-                
-                return result.error_code
-
         def pick_simple(self, left_right):
                 # self.prepare_robot()
                 #rospy.sleep(2.0)
@@ -263,7 +240,7 @@ class PickPlace(object):
                 rospy.loginfo("Pick: Waiting for a grasp pose")
                 grasp_ps = self.wait_for_pose('/grasp/pose')
 
-                pick_g = PickUpPoseGoal()
+                pick_g = PickPlacePoseGoal()
                 pick_g.left_right = left_right
                 pick_g.object_pose.pose = grasp_ps.pose
                 #pick_g.object_pose.pose.position = grasp_ps.pose.position
@@ -287,16 +264,37 @@ class PickPlace(object):
                 self.lift_torso()
 
                 # Save pos for placing
-                # TODO: different for left/right
-                self.place_g = copy.deepcopy(pick_g)
-                self.place_g.object_pose.pose.position.z += 0.025
+                self.place_g[left_right] = copy.deepcopy(pick_g)
+                self.place_g[left_right].object_pose.pose.position.z += 0.025
 
                 return result.error_code
 
-        def place_simple(self):
+        def place_object(self, object_name):
+                rospy.loginfo("Start placing %s", object_name)
+                goal = PlaceAutoObjectGoal()
+
+                rospy.loginfo("Place: Waiting for a place pose")
+                place_pose = self.wait_for_pose('/place/pose', timeout=10.)
+                if place_pose is None:
+                    # use previously stored pickup position
+                    place_pose = self.place_pose[object_name]
+
+                goal.target_pose = place_pose
+                goal.object_name = object_name
+                #goal.left_right = left_right  # not needed with 'Auto'
+                self.place_obj_as.send_goal_and_wait(goal)
+                rospy.loginfo("Place done!")
+
+                result = self.place_obj_as.get_result()
+                if str(moveit_error_dict[result.error_code]) != "SUCCESS":
+                        rospy.logerr("Failed to place, not trying further")
+                
+                return result.error_code
+
+        def place_simple(self, left_right):
                 # Place the object back to its position
                 rospy.loginfo("Gonna place near where it was")
-                self.place_as.send_goal_and_wait(self.place_g)
+                self.place_as.send_goal_and_wait(self.place_g[left_right])
                 rospy.loginfo("Done!")
 
                 result = self.place_as.get_result()

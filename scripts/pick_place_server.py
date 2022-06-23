@@ -30,7 +30,7 @@ from moveit_commander import PlanningSceneInterface
 from moveit_msgs.msg import Grasp, PickupAction, PickupGoal, PickupResult, MoveItErrorCodes
 from moveit_msgs.msg import PlaceAction, PlaceGoal, PlaceResult, PlaceLocation
 from geometry_msgs.msg import Pose, PoseStamped, PoseArray, Vector3Stamped, Vector3, Quaternion
-from tiago_dual_pick_place.msg import PlaceObjectAction, PlaceObjectResult, PickUpObjectAction, PickUpObjectResult, PickUpPoseAction, PickUpPoseResult
+from tiago_dual_pick_place.msg import PlaceAutoObjectAction, PlaceAutoObjectResult, PickUpObjectAction, PickUpObjectResult, PickPlacePoseAction, PickPlacePoseResult
 from moveit_msgs.srv import GetPlanningScene, GetPlanningSceneRequest, GetPlanningSceneResponse
 from std_srvs.srv import Empty, EmptyRequest
 from copy import deepcopy
@@ -138,12 +138,12 @@ class PickAndPlaceServer(object):
 
                 # Start action servers
                 self.pick_as = SimpleActionServer(
-                        '/pickup_pose', PickUpPoseAction,
+                        '/pickup_pose', PickPlacePoseAction,
                         execute_cb=self.pick_cb, auto_start=False)
                 self.pick_as.start()
 
                 self.place_as = SimpleActionServer(
-                        '/place_pose', PickUpPoseAction,
+                        '/place_pose', PickPlacePoseAction,
                         execute_cb=self.place_cb, auto_start=False)
                 self.place_as.start()
 
@@ -153,7 +153,7 @@ class PickAndPlaceServer(object):
                 self.pick_obj_as.start()
 
                 self.place_obj_as = SimpleActionServer(
-                        '/place_object', PlaceObjectAction,
+                        '/place_object', PlaceAutoObjectAction,
                         execute_cb=self.place_obj_cb, auto_start=False)
                 self.place_obj_as.start()
 
@@ -181,12 +181,28 @@ class PickAndPlaceServer(object):
 
         def place_obj_cb(self, goal):
                 """
-                :type goal: PlaceObjectGoal
+                :type goal: PlaceAutoObjectGoal
                 """
-                p_res = PlaceObjectResult()
-                arm_conf = self.arm_conf_r if goal.left_right == 'right' else self.arm_conf_l
-                p_res.error_code = self.place_object(
-                        arm_conf, goal.target_pose, part=goal.object_name, simple_place=False)
+                p_res = PlaceAutoObjectResult()
+
+                objects = self.scene.get_attached_objects()
+                arm_conf = None
+                for oid in objects:
+                    if oid != goal.object_name:
+                        continue
+                    link = objects[oid].link_name
+                    if self.arm_conf_r.is_link(link):
+                        arm_conf = self.arm_conf_r
+                    elif self.arm_conf_l.is_link(link):
+                        arm_conf = self.arm_conf_l
+
+                if arm_conf is not None:
+                    p_res.error_code = self.place_object(
+                            arm_conf, goal.target_pose, part=goal.object_name, simple_place=False)
+                else:
+                    rospy.logerr("Object not in gripper", goal.object_name)
+                    p_res.error_code = 99999
+
                 if p_res.error_code != 1:
                         self.place_obj_as.set_aborted(p_res)
                 else:
@@ -194,9 +210,9 @@ class PickAndPlaceServer(object):
 
         def pick_cb(self, goal):
                 """
-                :type goal: PickUpPoseGoal
+                :type goal: PickPlacePoseGoal
                 """
-                p_res = PickUpPoseResult()
+                p_res = PickPlacePoseResult()
                 arm_conf = self.arm_conf_r if goal.left_right == 'right' else self.arm_conf_l
                 self.remove_part(arm_conf.grasp_frame)
                 p_res.error_code = self.grasp(arm_conf, goal.object_pose)
@@ -207,10 +223,11 @@ class PickAndPlaceServer(object):
 
         def place_cb(self, goal):
                 """
-                :type goal: PickUpPoseGoal
+                :type goal: PickPlacePoseGoal
                 """
-                p_res = PickUpPoseResult()
-                p_res.error_code = self.place_object(goal.object_pose, simple_place=True)
+                p_res = PickPlacePoseResult()
+                arm_conf = self.arm_conf_r if goal.left_right == 'right' else self.arm_conf_l
+                p_res.error_code = self.place_object(arm_conf, goal.object_pose, simple_place=True)
                 if p_res.error_code != 1:
                         self.place_as.set_aborted(p_res)
                 else:

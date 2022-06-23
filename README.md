@@ -48,9 +48,7 @@ To pick two objects, first object with left arm, second object with right arm: `
 #### Pick by grasp pose
 In this case a grasp pose (position and orientation) is directly given. Since the pipeline works with scene objects, a virtual object is constructed in the scene around the given pose and then picked up. Since this virtual object represents the grasp and not any actual object you can completely ignore the visualization.
 
-To grasp by pose, first call the pick service: `rosservice call /pick`
-
-Then publish message with pose of object:  
+1. Publish message with pose of object:  
 `rostopic pub /grasp/pose geometry_gs/PoseStamped "header:
   seq: 0
   stamp:
@@ -67,14 +65,16 @@ pose:
     y: 0.0
     z: 0.0
     w: 0.0"`
-    
-Change position and orientation for the desired grasp. These can also be defined in a different reference frame ('frame_id').
+(You need to change position and orientation for the desired grasp. These can also be defined in a different reference frame by changing 'frame_id'.)
+
+2. Call the pick service, in order to perform the actual grasp:
+* Left arm: `rosservice call /pick left`
+* Right arm: `rosservice call /pick right`
 
 ### Place
-Placing requires (optionally) a target pose and the object name of the object which is to be placed.  
-If no target pose is sent within 10 seconds, the original pose of the object (before being picking up) is used.
+Placing requires a target pose. If no target pose is sent within 10 seconds, the original pose of the object (before being picking up) is used.
 
-(Optional) To specify the pose for placing:  
+1. (Optional) Publish the pose for placing:  
 `rostopic pub /place/pose geometry_gs/PoseStamped "header:
   seq: 0
   stamp:
@@ -92,8 +92,6 @@ pose:
     z: 0.0
     w: 0.0"`
 
-To place the default object at the specified pose (or alternatively the pickup pose):
-`rosservice call /place`
-
-To place an object with the name 'Box_0' at the specified pose (or alternatively the pickup pose):  
-`rosservice call /place_object 'Box_0'`
+2. Call the place service, either by specifiying left/right arm or the object name:
+    1. To place at the specified target pose (on timeout: the pickup pose): `rosservice call /place left`
+    2. To place an object with the name 'Box_0' at the specified pose (on timeout: the pickup pose): `rosservice call /place_object 'Box_0'`
