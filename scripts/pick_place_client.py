@@ -158,7 +158,7 @@ class PickPlace(object):
             return result.error_code
 
         # Move torso to its maximum height
-        self.lift_torso()
+        # self.lift_torso()
 
         # Raise arm
         rospy.loginfo("Moving arm to a safe pose")
@@ -206,6 +206,51 @@ class PickPlace(object):
             pmg.skip_planning = False
             rospy.loginfo("Sending raise arm command...")
             self.play_m_as.send_goal_and_wait(pmg)
+
+        return result.error_code
+
+    def pick_simple(self, left_right):
+        rospy.loginfo("Pick: Waiting for a grasp pose")
+        rospy.sleep(0.75)
+        grasp_ps = self.wait_for_pose('/grasp/pose')
+
+        pick_g = PickPlacePoseGoal()
+        pick_g.left_right = left_right
+        pick_g.object_pose.pose = grasp_ps.pose
+        #pick_g.object_pose.pose.position = grasp_ps.pose.position
+        #pick_g.object_pose.pose.position.z -= 0.1*(1.0/2.0)
+        #pick_g.object_pose.pose.orientation.w = 1.0
+        rospy.loginfo("grasp pose in base_footprint:" + str(pick_g))
+        pick_g.object_pose.header.frame_id = 'base_footprint'
+
+        self.detected_pose_pub.publish(pick_g.object_pose)
+        rospy.loginfo("Gonna pick:" + str(pick_g))
+
+        self.pick_as.send_goal_and_wait(pick_g)
+        rospy.loginfo("Done!")
+
+        result = self.pick_as.get_result()
+        if str(moveit_error_dict[result.error_code]) != "SUCCESS":
+            # if INVALIDATED_BY_ENVIRONMENT_CHANGE, just continue # TODO: Try to find out why this error occurs
+            if str(moveit_error_dict[result.error_code]) != "MOTION_PLAN_INVALIDATED_BY_ENVIRONMENT_CHANGE":
+                rospy.logerr("Failed to pick, not trying further")
+                return result.error_code
+
+        # Move torso to its maximum height
+        # self.lift_torso()
+
+        # Raise arm
+        rospy.loginfo("Moving arm to a safe pose")
+        pmg = PlayMotionGoal()
+        pmg.motion_name = 'pick_final_pose_' + left_right[0]  # take first char
+        print(pmg.motion_name)
+        pmg.skip_planning = False
+        rospy.loginfo("Sending raise arm command...")
+        self.play_m_as.send_goal_and_wait(pmg)
+
+        # Save pose for optional immediate placing back
+        self.place_g[left_right] = copy.deepcopy(pick_g)
+        self.place_g[left_right].object_pose.pose.position.z += 0.0125
 
         return result.error_code
 
@@ -266,7 +311,7 @@ class PickPlace(object):
         goal.object_name = object_name
         # goal.left_right = left_right  # not needed with 'Auto'
         print("Sending place...")
-        self.place_obj_as.send_goal_and_wait(goal)        
+        self.place_obj_as.send_goal_and_wait(goal)
 
         result = self.place_obj_as.get_result()
         if str(moveit_error_dict[result.error_code]) != "SUCCESS":
@@ -274,109 +319,20 @@ class PickPlace(object):
 
         return result.error_code
 
-    def pick_simple(self, left_right):
-        # self.prepare_robot()
-        # rospy.sleep(2.0)
-
-        rospy.loginfo("Pick: Waiting for a /grasp/pose")
-        grasp_ps = self.wait_for_pose('/grasp/pose')
-
-        pick_g = PickPlacePoseGoal()
-        pick_g.left_right = left_right
-        pick_g.object_pose.pose = grasp_ps.pose
-        #pick_g.object_pose.pose.position = grasp_ps.pose.position
-        #pick_g.object_pose.pose.position.z -= 0.1*(1.0/2.0)
-        #pick_g.object_pose.pose.orientation.w = 1.0
-        rospy.loginfo("grasp pose in base_footprint:" + str(pick_g))
-        pick_g.object_pose.header.frame_id = 'base_footprint'
-
-        self.detected_pose_pub.publish(pick_g.object_pose)
-        rospy.loginfo("Gonna pick:" + str(pick_g))
-
-        self.pick_as.send_goal_and_wait(pick_g)
-        rospy.loginfo("Done!")
-
-        result = self.pick_as.get_result()
-        if str(moveit_error_dict[result.error_code]) != "SUCCESS":
-            rospy.logerr("Failed to pick, not trying further")
-            return result.error_code
-
-        # Move torso to its maximum height
-        # self.lift_torso()
-
-        # Save pos for placing
-        self.place_g[left_right] = copy.deepcopy(pick_g)
-        self.place_g[left_right].object_pose.pose.position.z += 0.025
-
-        return result.error_code
-
     def place_simple(self, left_right):
         rospy.loginfo("Place: Waiting for a place pose")
         place_pose = self.wait_for_pose('/place/pose', timeout=1.0)
         if place_pose is None:
-                rospy.loginfo("No place pose set. Gonna try placing back where it was")
+            rospy.loginfo(
+                "No place pose set. Gonna try placing back where it was")
         else:
-                rospy.loginfo("Received a place pose")
-                self.place_g[left_right].object_pose.pose = place_pose.pose
-                self.place_g[left_right].object_pose.pose.position.z += 0.0125 # Add small offset to not crash into stuff      
+            rospy.loginfo("Received a place pose")
+            self.place_g[left_right].object_pose.pose = place_pose.pose
+            # Add small offset to not crash into stuff
+            self.place_g[left_right].object_pose.pose.position.z += 0.0125
         # Place the object
         self.place_as.send_goal_and_wait(self.place_g[left_right])
         rospy.loginfo("Done!")
-
-    def pick_place(self, string_operation):
-        transform_ok = True
-        if string_operation == "pick":
-            # self.prepare_robot()
-            # rospy.sleep(2.0)
-
-            rospy.loginfo("Pick: Waiting for a /grasp/pose")
-            grasp_ps = self.wait_for_pose('/grasp/pose')
-
-            pick_g = PickUpPoseGoal()
-            pick_g.object_pose.pose = grasp_ps.pose
-            #pick_g.object_pose.pose.position = grasp_ps.pose.position
-            #pick_g.object_pose.pose.position.z -= 0.1*(1.0/2.0)
-            #pick_g.object_pose.pose.orientation.w = 1.0
-            rospy.loginfo("grasp pose in base_footprint:" + str(pick_g))
-            pick_g.object_pose.header.frame_id = 'base_footprint'
-
-            self.detected_pose_pub.publish(pick_g.object_pose)
-            rospy.loginfo("Gonna pick:" + str(pick_g))
-
-            self.pick_as.send_goal_and_wait(pick_g)
-            rospy.loginfo("Done!")
-
-            result = self.pick_as.get_result()
-            if str(moveit_error_dict[result.error_code]) != "SUCCESS":
-                rospy.logerr("Failed to pick, not trying further")
-                return result.error_code
-
-            # Move torso to its maximum height
-            self.lift_torso()
-
-            # Raise arm
-            # rospy.loginfo("Moving arm to a safe pose")
-            # pmg = PlayMotionGoal()
-            # pmg.motion_name = 'pick_final_pose'
-            # pmg.skip_planning = False
-            # self.play_m_as.send_goal_and_wait(pmg)
-            # rospy.loginfo("Raise object done.")
-
-            # Save pos for placing
-            self.place_g = copy.deepcopy(pick_g)
-            self.place_g.object_pose.pose.position.z += 0.025
-
-            return result.error_code
-
-        elif string_operation == "place":
-            # Place the object back to its position
-            rospy.loginfo("Gonna place near where it was")
-            self.place_as.send_goal_and_wait(self.place_g)
-            rospy.loginfo("Done!")
-
-            result = self.place_as.get_result()
-
-            return result.error_code
 
     def lift_torso(self):
         rospy.loginfo("Moving torso up")

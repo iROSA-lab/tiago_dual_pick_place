@@ -313,7 +313,7 @@ class PickAndPlaceServer(object):
         # create scene object at pose of grasp
 
         # remove any old obstacles/tables (these will be added again as per the current grasp call)
-        self.remove_part()
+        self.remove_part(arm_conf.grasp_frame)
         self.scene.remove_world_object()  # NOTE: this removes everything!
 
         rospy.loginfo("Object pose: %s", object_pose.pose)
@@ -324,6 +324,7 @@ class PickAndPlaceServer(object):
         rospy.loginfo("Second%s", object_pose.pose)
 
         # Get all objects to be used for planning using an object Marker Array
+        obj_markers = None
         try:
             obj_markers = rospy.wait_for_message('/obj_markers', MarkerArray, timeout=3.)
             for marker in obj_markers.markers:
@@ -357,11 +358,12 @@ class PickAndPlaceServer(object):
             moveit_error_dict[result.error_code.val]) + "(" + str(result.error_code.val) + ")")
 
         # Remove objects that aren't necessary anymore
-        for marker in obj_markers.markers:
-            obj_id = marker.id
-            # remove everything except '42' (="part" object to be grasped)
-            if obj_id != 42:
-                self.scene.remove_world_object("obj"+str(obj_id))
+        if obj_markers is not None:
+            for marker in obj_markers.markers:
+                obj_id = marker.id
+                # remove everything except '42' (="part" object to be grasped)
+                if obj_id != 42:
+                    self.scene.remove_world_object("obj"+str(obj_id))
 
         return result.error_code.val
 
