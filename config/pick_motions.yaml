@@ -27,11 +27,10 @@ play_motion:
         usage: Pick and Place
         description: Go into pre-grasping position
     pick_final_pose_l:
-      joints: [torso_lift_joint,
-      arm_left_1_joint, arm_left_2_joint, arm_left_3_joint, arm_left_4_joint, arm_left_5_joint, arm_left_6_joint, arm_left_7_joint]
+      joints: [arm_left_1_joint, arm_left_2_joint, arm_left_3_joint, arm_left_4_joint, arm_left_5_joint, arm_left_6_joint, arm_left_7_joint]
       points:  
         - time_from_start: 10
-          positions: [0.328947714811, 0.9216551795731, -0.331692162107, 1.10785426737, 1.48047195803, 1.25781456086, -1.23424311931, 1.1]
+          positions: [0.137411578255, -0.530967093396, 1.16117230914, 1.83919500778, -1.8773838724, 0.758184956361, -0.619751812536]
       meta:
         name: Pick final pose, Left
         usage: Pick and Place
@@ -64,11 +63,10 @@ play_motion:
         usage: Pick and Place
         description: Go into pre-grasping position
     pick_final_pose_r:
-      joints: [torso_lift_joint,
-      arm_right_1_joint, arm_right_2_joint, arm_right_3_joint, arm_right_4_joint, arm_right_5_joint, arm_right_6_joint, arm_right_7_joint]
+      joints: [arm_right_1_joint, arm_right_2_joint, arm_right_3_joint, arm_right_4_joint, arm_right_5_joint, arm_right_6_joint, arm_right_7_joint]
       points:  
         - time_from_start: 10
-          positions: [0.328947714811, 0.9216551795731, -0.331692162107, 1.10785426737, 1.48047195803, 1.25781456086, -1.23424311931, 1.1]
+          positions: [0.137411578255, -0.530967093396, 1.16117230914, 1.83919500778, -1.8773838724, 0.758184956361, -0.619751812536]
       meta:
         name: Pick final pose, Right
         usage: Pick and Place

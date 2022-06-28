@@ -32,6 +32,7 @@ from moveit_msgs.msg import PlaceAction, PlaceGoal, PlaceResult, PlaceLocation
 from geometry_msgs.msg import Pose, PoseStamped, PoseArray, Vector3Stamped, Vector3, Quaternion
 from tiago_dual_pick_place.msg import PlaceAutoObjectAction, PlaceAutoObjectResult, PickUpObjectAction, PickUpObjectResult, PickPlacePoseAction, PickPlacePoseResult
 from moveit_msgs.srv import GetPlanningScene, GetPlanningSceneRequest, GetPlanningSceneResponse
+from visualization_msgs.msg import MarkerArray
 from std_srvs.srv import Empty, EmptyRequest
 from copy import deepcopy
 from random import shuffle
@@ -142,12 +143,12 @@ class PickAndPlaceServer(object):
 
         # Start action servers
         self.pick_as = SimpleActionServer(
-            '/pickup_pose', PickPlacePoseAction,
+            '/pick_as', PickPlacePoseAction,
             execute_cb=self.pick_cb, auto_start=False)
         self.pick_as.start()
 
         self.place_as = SimpleActionServer(
-            '/place_pose', PickPlacePoseAction,
+            '/place_as', PickPlacePoseAction,
             execute_cb=self.place_cb, auto_start=False)
         self.place_as.start()
 
@@ -205,7 +206,7 @@ class PickAndPlaceServer(object):
             p_res.error_code = self.place_object(
                 arm_conf, goal.target_pose, part=goal.object_name, simple_place=False)
         else:
-            rospy.logerr("Object not in gripper", goal.object_name)
+            rospy.logerr("Object %s not in gripper", goal.object_name)
             p_res.error_code = 99999
 
         if p_res.error_code != 1:
@@ -323,16 +324,19 @@ class PickAndPlaceServer(object):
         rospy.loginfo("Second%s", object_pose.pose)
 
         # Get all objects to be used for planning using an object Marker Array
-        obj_markers = rospy.wait_for_message('/obj_markers', MarkerArray)
-        for marker in obj_markers.markers:
-            obj_id = marker.id
-            obj_pose = PoseStamped()
-            obj_pose.header = marker.header
-            obj_pose.pose = marker.pose
-            obj_dimensions = (marker.scale.x, marker.scale.y, marker.scale.z)
-            # '42' is the main "part" object to be grasped
-            if obj_id != 42:
-                self.scene.add_box("obj"+str(obj_id), obj_pose, obj_dimensions)
+        try:
+            obj_markers = rospy.wait_for_message('/obj_markers', MarkerArray, timeout=3.)
+            for marker in obj_markers.markers:
+                obj_id = marker.id
+                obj_pose = PoseStamped()
+                obj_pose.header = marker.header
+                obj_pose.pose = marker.pose
+                obj_dimensions = (marker.scale.x, marker.scale.y, marker.scale.z)
+                # '42' is the main "part" object to be grasped
+                if obj_id != 42:
+                    self.scene.add_box("obj"+str(obj_id), obj_pose, obj_dimensions)
+        except rospy.ROSException as e:
+            print("No object markers found. Not using any obstacles in planning")
         self.add_part(object_pose)  # grasp for object 42
 
         # We need to wait for the object 'part' to appear
@@ -367,36 +371,37 @@ class PickAndPlaceServer(object):
         self.clear_octomap_srv.call(EmptyRequest())
 
         # Get all objects to be used for planning using an object Marker Array
-        obj_markers = rospy.wait_for_message('/obj_markers', MarkerArray)
-        for marker in obj_markers.markers:
-            obj_id = marker.id
-            obj_pose = PoseStamped()
-            obj_pose.header = marker.header
-            obj_pose.pose = marker.pose
-            obj_dimensions = (marker.scale.x, marker.scale.y, marker.scale.z)
-            # '42' is the main "part" object to be grasped
-            if obj_id != 42:
-                self.scene.add_box("obj"+str(obj_id), obj_pose, obj_dimensions)
-
-        self.wait_for_planning_scene_object("obj"+str(obj_id))
-
+        print("Waiting for /obj_markers")
+        try:
+            obj_markers = rospy.wait_for_message('/obj_markers', MarkerArray, timeout=3.)
+            for marker in obj_markers.markers:
+                obj_id = marker.id
+                obj_pose = PoseStamped()
+                obj_pose.header = marker.header
+                obj_pose.pose = marker.pose
+                obj_dimensions = (marker.scale.x, marker.scale.y, marker.scale.z)
+                # '42' is the main "part" object to be grasped
+                if obj_id != 42:
+                    self.scene.add_box("obj"+str(obj_id), obj_pose, obj_dimensions)
+                    self.wait_for_planning_scene_object("obj"+str(obj_id))
+        except rospy.ROSException as e:
+            print("No object markers found. Not using any obstacles in planning")
+        
         possible_placings = self.sg.create_placings_from_object_pose(
-            object_pose, simple_place)
+            object_pose, simple_place, arm_conf)
         rospy.loginfo(
             "Trying to place with arm and torso")
         rospy.loginfo(
-            "MOVE GROUP is:" + str(self.move_group_1))
+            "MOVE GROUP is:" + str(arm_conf.group_arm_torso))
         # Try with arm and torso
         goal = createPlaceGoal(
             object_pose, possible_placings, arm_conf.group_arm_torso, part, self.links_to_allow_contact)
-        rospy.loginfo("Sending goal")
         rospy.loginfo("Sending goal")
         self.place_ac.send_goal(goal)
         rospy.loginfo("Waiting for result")
 
         self.place_ac.wait_for_result()
         result = self.place_ac.get_result()
-        rospy.logerr(str(moveit_error_dict[result.error_code.val]))
 
         # print result
         rospy.loginfo(
