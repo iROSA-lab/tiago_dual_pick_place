@@ -22,7 +22,7 @@ gripper_joint_names_r: "gripper_right_left_finger_joint gripper_right_right_fing
 # Currently unused grasp quality to put in the message
 grasp_quality: 0.1
 # Closed position
-gripper_grasp_positions: "0.02 0.02"
+gripper_grasp_positions: "0.011 0.011"
 # Open position
 gripper_pre_grasp_positions: "0.038 0.038"
 
