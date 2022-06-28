@@ -1,3 +1,4 @@
+string left_right
 geometry_msgs/PoseStamped object_pose
 ---
 #result definition

@@ -19,14 +19,17 @@ generate_dynamic_reconfigure_options(
 
 add_action_files(
   FILES
-  PickUpPose.action
+  PickPlacePose.action
   PickUpObject.action
   PlaceObject.action
+  PlaceAutoObject.action
 )
 
 add_service_files(
   FILES
   PickPlaceObject.srv
+  PickPlaceObjects.srv
+  PickPlaceAutoObject.srv
   PickPlaceSimple.srv
 )
 
@@ -47,6 +50,7 @@ install(PROGRAMS
         scripts/pick_and_place_server.py
         scripts/pick_client.py
         scripts/grasps_server.py
+        scripts/arm_conf.py
         DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION}
 )
 

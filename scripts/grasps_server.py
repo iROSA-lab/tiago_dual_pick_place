@@ -45,6 +45,8 @@ from tf.transformations import quaternion_from_euler, euler_from_quaternion, qua
 
 from dynamic_reconfigure.server import Server
 from tiago_dual_pick_place.cfg import GraspsConfig
+from arm_conf import ArmConf
+
 
 def normalize(v):
     norm = np.linalg.norm(v)
@@ -112,12 +114,12 @@ def sort_by_height(sphere_poses):
 
 
 class Grasps(object):
-    def __init__(self, grasp_frame):
+    def __init__(self):
         rospy.loginfo("Initializing Grasps...")
+
         # Get server parameters from param server by using dynamic reconfigure
         # This is an advantage as you can test your grasp configuration
         # dynamically
-        self._grasp_postures_frame_id = grasp_frame
         self.dyn_rec_srv = Server(GraspsConfig, self.dyn_rec_callback)
 
         # Setup Markers for debugging
@@ -133,9 +135,7 @@ class Grasps(object):
     def dyn_rec_callback(self, config, level):
 
         rospy.loginfo("Received reconf call: " + str(config))
-        self._gripper_joint_names = config["gripper_joint_names"]
-        self._gripper_pre_grasp_positions = config[
-            "gripper_pre_grasp_positions"]
+        self._gripper_pre_grasp_positions = config["gripper_pre_grasp_positions"]
         self._gripper_grasp_positions = config["gripper_grasp_positions"]
         self._time_pre_grasp_posture = config["time_pre_grasp_posture"]
         self._time_grasp_posture = config["time_grasp_posture"]
@@ -293,19 +293,17 @@ class Grasps(object):
 
         self.object_pub.publish(m)
 
-    def create_grasps_from_poses(self, sphere_poses):
+    def create_grasps_from_poses(self, sphere_poses, arm_conf):
         """
         :type sphere_poses: []
             [] of Pose
         """
         grasps = []
         for idx, pose in enumerate(sphere_poses):
-            grasps.append(
-                self.create_grasp(pose,
-                                  "grasp_" + str(idx)))
+            grasps.append(self.create_grasp(pose, "grasp_" + str(idx), arm_conf))
         return grasps
 
-    def create_grasp(self, pose, grasp_id):
+    def create_grasp(self, pose, grasp_id, arm_conf):
         """
         :type pose: Pose
             pose of the gripper for the grasp
@@ -317,12 +315,10 @@ class Grasps(object):
         g.id = grasp_id
 
         pre_grasp_posture = JointTrajectory()
-        pre_grasp_posture.header.frame_id = self._grasp_postures_frame_id
-        pre_grasp_posture.joint_names = [
-            name for name in self._gripper_joint_names.split()]
+        pre_grasp_posture.header.frame_id = arm_conf.grasp_frame
+        pre_grasp_posture.joint_names = [name for name in arm_conf.gripper_joints.split()]
         jtpoint = JointTrajectoryPoint()
-        jtpoint.positions = [
-            float(pos) for pos in self._gripper_pre_grasp_positions.split()]
+        jtpoint.positions = [float(pos) for pos in self._gripper_pre_grasp_positions.split()]
         jtpoint.time_from_start = rospy.Duration(self._time_pre_grasp_posture)
         pre_grasp_posture.points.append(jtpoint)
 
@@ -330,8 +326,7 @@ class Grasps(object):
         grasp_posture.points[0].time_from_start = rospy.Duration(
             self._time_pre_grasp_posture + self._time_grasp_posture)
         jtpoint2 = JointTrajectoryPoint()
-        jtpoint2.positions = [
-            float(pos) for pos in self._gripper_grasp_positions.split()] # TODO: Allow changing grasp widths
+        jtpoint2.positions = [float(pos) for pos in self._gripper_grasp_positions.split()]
         jtpoint2.time_from_start = rospy.Duration(
             self._time_pre_grasp_posture +
             self._time_grasp_posture + self._time_grasp_posture_final)
@@ -361,15 +356,15 @@ class Grasps(object):
         g.pre_grasp_approach.direction.vector.x = self._pre_grasp_direction_x  # NOQA
         g.pre_grasp_approach.direction.vector.y = self._pre_grasp_direction_y  # NOQA
         g.pre_grasp_approach.direction.vector.z = self._pre_grasp_direction_z  # NOQA
-        g.pre_grasp_approach.direction.header.frame_id = self._grasp_postures_frame_id  # NOQA
-        g.pre_grasp_approach.desired_distance = self._grasp_desired_distance/1.5  # NOQA
+        g.pre_grasp_approach.direction.header.frame_id = arm_conf.grasp_frame  # NOQA
+        g.pre_grasp_approach.desired_distance = self._grasp_desired_distance  # NOQA
         g.pre_grasp_approach.min_distance = self._grasp_min_distance
         g.post_grasp_retreat = GripperTranslation()
         g.post_grasp_retreat.direction.vector.x = self._post_grasp_direction_x  # NOQA
         g.post_grasp_retreat.direction.vector.y = self._post_grasp_direction_y  # NOQA
         g.post_grasp_retreat.direction.vector.z = self._post_grasp_direction_z  # NOQA
-        g.post_grasp_retreat.direction.header.frame_id = self._grasp_postures_frame_id  # NOQA
-        g.post_grasp_retreat.desired_distance = self._grasp_desired_distance/1.2  # NOQA
+        g.post_grasp_retreat.direction.header.frame_id = arm_conf.grasp_frame  # NOQA
+        g.post_grasp_retreat.desired_distance = self._grasp_desired_distance  # NOQA
         g.post_grasp_retreat.min_distance = self._grasp_min_distance
 
         g.max_contact_force = self._max_contact_force
@@ -377,7 +372,7 @@ class Grasps(object):
 
         return g
 
-    def create_grasps_from_object_pose(self, object_pose, single=True):
+    def create_grasps_from_object_pose(self, object_pose, arm_conf, single=True):
         """
         :type object_pose: PoseStamped
         """
@@ -391,7 +386,7 @@ class Grasps(object):
         filtered_poses = filter_poses(sphere_poses, object_pose,
                                       filter_behind=False, filter_under=True)
         sorted_poses = sort_by_height(filtered_poses)
-        grasps = self.create_grasps_from_poses(sorted_poses)
+        grasps = self.create_grasps_from_poses(sorted_poses, arm_conf)
         tend = rospy.Time.now()
         rospy.loginfo("Generated " + str(len(grasps)) +
                       " grasps in " + str((tend - tini).to_sec()))
@@ -401,17 +396,15 @@ class Grasps(object):
         self.publish_object_marker(object_pose)
         return grasps
 
-    def create_placings_from_object_pose(self, posestamped, simple_place):
+    def create_placings_from_object_pose(self, posestamped, simple_place, arm_conf):
         """ Create a list of PlaceLocation of the object rotated every 15deg"""
         place_locs = []
         pre_grasp_posture = JointTrajectory()
         # Actually ignored....
         pre_grasp_posture.header.frame_id = self._grasp_pose_frame_id
-        pre_grasp_posture.joint_names = [
-            name for name in self._gripper_joint_names.split()]
+        pre_grasp_posture.joint_names = [name for name in arm_conf.gripper_joints.split()]
         jtpoint = JointTrajectoryPoint()
-        jtpoint.positions = [
-            float(pos) for pos in self._gripper_pre_grasp_positions.split()]
+        jtpoint.positions = [float(pos) for pos in self._gripper_pre_grasp_positions.split()]
         jtpoint.time_from_start = rospy.Duration(self._time_pre_grasp_posture)
         pre_grasp_posture.points.append(jtpoint)
 
@@ -419,10 +412,8 @@ class Grasps(object):
         if simple_place:
             pl = PlaceLocation()
             pl.place_pose = posestamped
-            pl.pre_place_approach = self.createGripperTranslation(
-                Vector3(1.0, 0.0, 0.0))
-            pl.post_place_retreat = self.createGripperTranslation(
-                Vector3(-1.0, 0.0, 0.0))
+            pl.pre_place_approach = self.createGripperTranslation(arm_conf.grasp_frame, Vector3(1.0, 0.0, 0.0))
+            pl.post_place_retreat = self.createGripperTranslation(arm_conf.grasp_frame, Vector3(-1.0, 0.0, 0.0))
             pl.post_place_posture = pre_grasp_posture
             place_locs.append(pl)
         else:
@@ -435,29 +426,28 @@ class Grasps(object):
                     newquat[0], newquat[1], newquat[2], newquat[3])
                 # TODO: the frame is ignored, this will always be the frame of the gripper
                 # so arm_tool_link
-                pl.pre_place_approach = self.createGripperTranslation(
-                    Vector3(1.0, 0.0, 0.0))
-                pl.post_place_retreat = self.createGripperTranslation(
-                    Vector3(-1.0, 0.0, 0.0))
+                pl.pre_place_approach = self.createGripperTranslation(arm_conf.grasp_frame, Vector3(1.0, 0.0, 0.0))
+                pl.post_place_retreat = self.createGripperTranslation(arm_conf.grasp_frame, Vector3(-1.0, 0.0, 0.0))
 
                 pl.post_place_posture = pre_grasp_posture
                 place_locs.append(pl)
 
         return place_locs
 
-    def createGripperTranslation(self, direction_vector,
+    def createGripperTranslation(self, frame_id, direction_vector,
+                                 desired_distance=0.15,
                                  min_distance=0.01):
         """Returns a GripperTranslation message with the
          direction_vector and desired_distance and min_distance in it.
         Intended to be used to fill the pre_grasp_approach
          and post_grasp_retreat field in the Grasp message."""
         g_trans = GripperTranslation()
-        g_trans.direction.header.frame_id = self._grasp_postures_frame_id
+        g_trans.direction.header.frame_id = frame_id
         g_trans.direction.header.stamp = rospy.Time.now()
         g_trans.direction.vector.x = direction_vector.x
         g_trans.direction.vector.y = direction_vector.y
         g_trans.direction.vector.z = direction_vector.z
-        g_trans.desired_distance = self._grasp_desired_distance/1.2
+        g_trans.desired_distance = desired_distance
         g_trans.min_distance = min_distance
         return g_trans
 
