@@ -1,11 +1,11 @@
 # Desired distance from grasp_postures_frame_id to put the object
 # So, the grasping point
-grasp_desired_distance: 0.23
+grasp_desired_distance: 0.21
 grasp_min_distance: 0.0
 # Times for the grasp, they are sumed step after step
-time_pre_grasp_posture: 5.0
-time_grasp_posture: 1.0
-time_grasp_posture_final: 3.0
+time_pre_grasp_posture: 4.0
+time_grasp_posture: 2.0
+time_grasp_posture_final: 5.0
 # Base frame of MoveIt for your robot
 grasp_pose_frame_id: base_footprint
 # Move groups

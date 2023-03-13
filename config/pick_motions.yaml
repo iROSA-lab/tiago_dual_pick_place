@@ -71,3 +71,12 @@ play_motion:
         name: Pick final pose, Right
         usage: Pick and Place
         description: Go into final pose after picking
+    pick_final_pose_dual:
+      joints: [arm_right_1_joint, arm_right_2_joint, arm_right_3_joint, arm_right_4_joint, arm_right_5_joint, arm_right_6_joint, arm_right_7_joint, arm_left_1_joint, arm_left_2_joint, arm_left_3_joint, arm_left_4_joint, arm_left_5_joint, arm_left_6_joint, arm_left_7_joint]
+      points:  
+        - time_from_start: 10
+          positions: [0.137411578255, -0.530967093396, 1.16117230914, 1.83919500778, -1.8773838724, 0.758184956361, -0.619751812536, 0.137411578255, -0.530967093396, 1.16117230914, 1.83919500778, -1.8773838724, 0.758184956361, -0.619751812536]
+      meta:
+        name: Pick final pose, Dual
+        usage: Pick and Place
+        description: Go into final pose after picking
