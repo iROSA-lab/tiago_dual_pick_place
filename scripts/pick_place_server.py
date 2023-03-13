@@ -27,11 +27,35 @@ from grasps_server import Grasps
 from arm_conf import ArmConf
 from actionlib import SimpleActionClient, SimpleActionServer
 from moveit_commander import PlanningSceneInterface
-from moveit_msgs.msg import Grasp, PickupAction, PickupGoal, PickupResult, MoveItErrorCodes
+from moveit_msgs.msg import (
+    Grasp,
+    PickupAction,
+    PickupGoal,
+    PickupResult,
+    MoveItErrorCodes,
+)
 from moveit_msgs.msg import PlaceAction, PlaceGoal, PlaceResult, PlaceLocation
-from geometry_msgs.msg import Pose, PoseStamped, PoseArray, Vector3Stamped, Vector3, Quaternion
-from tiago_dual_pick_place.msg import PlaceAutoObjectAction, PlaceAutoObjectResult, PickUpObjectAction, PickUpObjectResult, PickPlacePoseAction, PickPlacePoseResult
-from moveit_msgs.srv import GetPlanningScene, GetPlanningSceneRequest, GetPlanningSceneResponse
+from geometry_msgs.msg import (
+    Pose,
+    PoseStamped,
+    PoseArray,
+    Vector3Stamped,
+    Vector3,
+    Quaternion,
+)
+from tiago_dual_pick_place.msg import (
+    PlaceAutoObjectAction,
+    PlaceAutoObjectResult,
+    PickUpObjectAction,
+    PickUpObjectResult,
+    PickPlacePoseAction,
+    PickPlacePoseResult,
+)
+from moveit_msgs.srv import (
+    GetPlanningScene,
+    GetPlanningSceneRequest,
+    GetPlanningSceneResponse,
+)
 from visualization_msgs.msg import MarkerArray
 from std_srvs.srv import Empty, EmptyRequest
 from copy import deepcopy
@@ -40,28 +64,33 @@ import copy
 
 moveit_error_dict = {}
 for name in MoveItErrorCodes.__dict__.keys():
-    if not name[:1] == '_':
+    if not name[:1] == "_":
         code = MoveItErrorCodes.__dict__[name]
         moveit_error_dict[code] = name
 
 
-def createPickupGoal(group, target="part",
-                     grasp_pose=PoseStamped(),
-                     possible_grasps=[],
-                     links_to_allow_contact=None):
-    """ Create a PickupGoal with the provided data"""
+def createPickupGoal(
+    group,
+    target="part",
+    grasp_pose=PoseStamped(),
+    possible_grasps=[],
+    links_to_allow_contact=None,
+):
+    """Create a PickupGoal with the provided data"""
     pug = PickupGoal()
     pug.target_name = target
     pug.group_name = group
     pug.possible_grasps.extend(possible_grasps)
-    pug.allowed_planning_time = 35.0
+    pug.allowed_planning_time = 60.0
     pug.planning_options.planning_scene_diff.is_diff = True
     pug.planning_options.planning_scene_diff.robot_state.is_diff = True
     pug.planning_options.plan_only = False
     pug.planning_options.replan = True
-    pug.planning_options.replan_attempts = 1  # 10
+    pug.planning_options.replan_attempts = 5  # 10
     pug.allowed_touch_objects = []
-    pug.attached_object_touch_links = ['<octomap>']
+    pug.support_surface_name = "table"
+    pug.allow_gripper_support_collision = True
+    pug.attached_object_touch_links = ["<octomap>"]
     pug.attached_object_touch_links.extend(links_to_allow_contact)
 
     return pug
@@ -82,84 +111,95 @@ def createPlaceGoal(place_pose,
     placeg.planning_options.planning_scene_diff.robot_state.is_diff = True
     placeg.planning_options.plan_only = False
     placeg.planning_options.replan = True
-    placeg.planning_options.replan_attempts = 1
-    placeg.allowed_touch_objects = ['<octomap>']
+    placeg.planning_options.replan_attempts = 5
+    placeg.allowed_touch_objects = ["<octomap>"]
+    placeg.support_surface_name = "table, box0, box1, box2, box3, box4"
+    placeg.allow_gripper_support_collision = True
     placeg.allowed_touch_objects.extend(links_to_allow_contact)
 
     return placeg
 
 
 class PickAndPlaceServer(object):
+
     def __init__(self):
         rospy.loginfo("Initalizing PickAndPlaceServer...")
         rospy.loginfo("Connecting to pickup AS")
-        self.pickup_ac = SimpleActionClient('/pickup', PickupAction)
+        self.pickup_ac = SimpleActionClient("/pickup", PickupAction)
         self.pickup_ac.wait_for_server()
         rospy.loginfo("Succesfully connected.")
         rospy.loginfo("Connecting to place AS")
-        self.place_ac = SimpleActionClient('/place', PlaceAction)
+        self.place_ac = SimpleActionClient("/place", PlaceAction)
         self.place_ac.wait_for_server()
         rospy.loginfo("Succesfully connected.")
         self.scene = PlanningSceneInterface()
         rospy.loginfo("Connecting to /get_planning_scene service")
-        self.scene_srv = rospy.ServiceProxy(
-            '/get_planning_scene', GetPlanningScene)
+        self.scene_srv = rospy.ServiceProxy("/get_planning_scene",
+                                            GetPlanningScene)
         self.scene_srv.wait_for_service()
         rospy.loginfo("Connected.")
 
         rospy.loginfo("Connecting to clear octomap service...")
-        self.clear_octomap_srv = rospy.ServiceProxy(
-            '/clear_octomap', Empty)
+        self.clear_octomap_srv = rospy.ServiceProxy("/clear_octomap", Empty)
         self.clear_octomap_srv.wait_for_service()
         rospy.loginfo("Connected!")
 
         # Get the object size
-        self.object_height = rospy.get_param('~object_height')
-        self.object_width = rospy.get_param('~object_width')
-        self.object_depth = rospy.get_param('~object_depth')
+        self.object_height = rospy.get_param("~object_height")
+        self.object_width = rospy.get_param("~object_width")
+        self.object_depth = rospy.get_param("~object_depth")
 
         self.arm_conf_l = ArmConf(
-            rospy.get_param('~move_group_l0'),
-            rospy.get_param('~move_group_l1'),
-            rospy.get_param('~grasp_postures_frame_id_l'),
-            rospy.get_param('~gripper_joint_names_l')
+            rospy.get_param("~move_group_l0"),
+            rospy.get_param("~move_group_l1"),
+            rospy.get_param("~grasp_postures_frame_id_l"),
+            rospy.get_param("~gripper_joint_names_l"),
         )
         self.arm_conf_r = ArmConf(
-            rospy.get_param('~move_group_r0'),
-            rospy.get_param('~move_group_r1'),
-            rospy.get_param('~grasp_postures_frame_id_r'),
-            rospy.get_param('~gripper_joint_names_r')
+            rospy.get_param("~move_group_r0"),
+            rospy.get_param("~move_group_r1"),
+            rospy.get_param("~grasp_postures_frame_id_r"),
+            rospy.get_param("~gripper_joint_names_r"),
         )
 
         # Get the links of the end effector exclude from collisions
         self.links_to_allow_contact = rospy.get_param(
-            '~links_to_allow_contact', None)
+            "~links_to_allow_contact", None)
         if self.links_to_allow_contact is None:
             rospy.logwarn(
-                "Didn't find any links to allow contacts... at param ~links_to_allow_contact")
+                "Didn't find any links to allow contacts... at param ~links_to_allow_contact"
+            )
         else:
             rospy.loginfo("Found links to allow contacts: " +
                           str(self.links_to_allow_contact))
 
         # Start action servers
-        self.pick_as = SimpleActionServer(
-            '/pick_as', PickPlacePoseAction,
-            execute_cb=self.pick_cb, auto_start=False)
+        self.pick_as = SimpleActionServer("/pick_as",
+                                          PickPlacePoseAction,
+                                          execute_cb=self.pick_cb,
+                                          auto_start=False)
         self.pick_as.start()
 
-        self.place_as = SimpleActionServer(
-            '/place_as', PickPlacePoseAction,
-            execute_cb=self.place_cb, auto_start=False)
+        self.place_as = SimpleActionServer("/place_as",
+                                           PickPlacePoseAction,
+                                           execute_cb=self.place_cb,
+                                           auto_start=False)
         self.place_as.start()
 
         self.pick_obj_as = SimpleActionServer(
-            '/pickup_object', PickUpObjectAction,
-            execute_cb=self.pick_obj_cb, auto_start=False)
+            "/pickup_object",
+            PickUpObjectAction,
+            execute_cb=self.pick_obj_cb,
+            auto_start=False,
+        )
         self.pick_obj_as.start()
 
         self.place_obj_as = SimpleActionServer(
-            '/place_object', PlaceAutoObjectAction,
-            execute_cb=self.place_obj_cb, auto_start=False)
+            "/place_object",
+            PlaceAutoObjectAction,
+            execute_cb=self.place_obj_cb,
+            auto_start=False,
+        )
         self.place_obj_as.start()
 
         # Initialize grasp generator
@@ -170,14 +210,15 @@ class PickAndPlaceServer(object):
         :type goal: PickUpObjectGoal
         """
         p_res = PickUpObjectResult()
-        arm_conf = self.arm_conf_r if goal.left_right == 'right' else self.arm_conf_l
+        arm_conf = self.arm_conf_r if goal.left_right == "right" else self.arm_conf_l
         object_pose = self.get_object_pose(goal.object_name)
         if object_pose is None:
             rospy.logerr("Object with name %s not found", goal.object_name)
             p_res.error_code = 99999
         else:
-            p_res.error_code = self.grasp_object(
-                arm_conf, object_pose, part=goal.object_name)
+            p_res.error_code = self.grasp_object(arm_conf,
+                                                 object_pose,
+                                                 part=goal.object_name)
             p_res.object_pose = object_pose
 
         if p_res.error_code != 1:
@@ -203,8 +244,10 @@ class PickAndPlaceServer(object):
                 arm_conf = self.arm_conf_l
 
         if arm_conf is not None:
-            p_res.error_code = self.place_object(
-                arm_conf, goal.target_pose, part=goal.object_name, simple_place=False)
+            p_res.error_code = self.place_object(arm_conf,
+                                                 goal.target_pose,
+                                                 part=goal.object_name,
+                                                 simple_place=False)
         else:
             rospy.logerr("Object %s not in gripper", goal.object_name)
             p_res.error_code = 99999
@@ -219,7 +262,7 @@ class PickAndPlaceServer(object):
         :type goal: PickPlacePoseGoal
         """
         p_res = PickPlacePoseResult()
-        arm_conf = self.arm_conf_r if goal.left_right == 'right' else self.arm_conf_l
+        arm_conf = self.arm_conf_r if goal.left_right == "right" else self.arm_conf_l
         self.remove_part(arm_conf.grasp_frame)
         p_res.error_code = self.grasp(arm_conf, goal.object_pose)
         if p_res.error_code != 1:
@@ -232,17 +275,18 @@ class PickAndPlaceServer(object):
         :type goal: PickPlacePoseGoal
         """
         p_res = PickPlacePoseResult()
-        arm_conf = self.arm_conf_r if goal.left_right == 'right' else self.arm_conf_l
-        p_res.error_code = self.place_object(
-            arm_conf, goal.object_pose, simple_place=True)
+        arm_conf = self.arm_conf_r if goal.left_right == "right" else self.arm_conf_l
+        p_res.error_code = self.place_object(arm_conf,
+                                             goal.object_pose,
+                                             simple_place=True)
         if p_res.error_code != 1:
             self.place_as.set_aborted(p_res)
         else:
             self.place_as.set_succeeded(p_res)
 
-    def wait_for_planning_scene_object(self, object_name='part'):
-        rospy.loginfo(
-            "Waiting for object '" + object_name + "'' to appear in planning scene...")
+    def wait_for_planning_scene_object(self, object_name="part"):
+        rospy.loginfo("Waiting for object '" + object_name +
+                      "'' to appear in planning scene...")
         gps_req = GetPlanningSceneRequest()
         gps_req.components.components = gps_req.components.WORLD_OBJECT_NAMES
 
@@ -272,16 +316,20 @@ class PickAndPlaceServer(object):
         return object_pose
 
     def remove_part(self, grasp_frame, object_name="part"):
-        rospy.loginfo("Removing any previous '"+str(object_name)+"' object")
+        rospy.loginfo("Removing any previous '" + str(object_name) +
+                      "' object")
         self.scene.remove_attached_object(grasp_frame)
         self.scene.remove_world_object(object_name)
         rospy.sleep(2.0)  # Removing is fast
 
     def add_part(self, object_pose, object_name="part"):
-        rospy.loginfo("Adding new '"+str(object_name)+"' object")
+        rospy.loginfo("Adding new '" + str(object_name) + "' object")
         # Add object description in scene
-        self.scene.add_box(object_name, object_pose,
-                           (self.object_depth, self.object_width, self.object_height))
+        self.scene.add_box(
+            object_name,
+            object_pose,
+            (self.object_depth, self.object_width, self.object_height),
+        )
 
     def grasp_object(self, arm_conf, object_pose, part="part"):
         rospy.loginfo("Clearing octomap")
@@ -293,10 +341,16 @@ class PickAndPlaceServer(object):
         self.wait_for_planning_scene_object(part)
 
         # compute grasps
-        possible_grasps = self.sg.create_grasps_from_object_pose(
-            object_pose, arm_conf, single=False)
+        possible_grasps = self.sg.create_grasps_from_object_pose(object_pose,
+                                                                 arm_conf,
+                                                                 single=False)
         goal = createPickupGoal(
-            arm_conf.group_arm, part, object_pose, possible_grasps, self.links_to_allow_contact)
+            arm_conf.group_arm,
+            part,
+            object_pose,
+            possible_grasps,
+            self.links_to_allow_contact,
+        )
 
         rospy.loginfo("Sending goal")
         self.pickup_ac.send_goal(goal)
@@ -304,8 +358,9 @@ class PickAndPlaceServer(object):
         self.pickup_ac.wait_for_result()
         result = self.pickup_ac.get_result()
         rospy.logdebug("Using torso result: " + str(result))
-        rospy.loginfo("Pick result: " + str(
-            moveit_error_dict[result.error_code.val]) + "(" + str(result.error_code.val) + ")")
+        rospy.loginfo("Pick result: " +
+                      str(moveit_error_dict[result.error_code.val]) + "(" +
+                      str(result.error_code.val) + ")")
 
         return result.error_code.val
 
@@ -326,36 +381,48 @@ class PickAndPlaceServer(object):
         # Get all objects to be used for planning using an object Marker Array
         obj_markers = None
         try:
-            obj_markers = rospy.wait_for_message('/obj_markers', MarkerArray, timeout=3.)
+            obj_markers = rospy.wait_for_message("/obj_markers",
+                                                 MarkerArray,
+                                                 timeout=3.0)
             for marker in obj_markers.markers:
                 obj_id = marker.id
                 obj_pose = PoseStamped()
                 obj_pose.header = marker.header
                 obj_pose.pose = marker.pose
-                obj_dimensions = (marker.scale.x, marker.scale.y, marker.scale.z)
+                obj_dimensions = (marker.scale.x, marker.scale.y,
+                                  marker.scale.z)
                 # '42' is the main "part" object to be grasped
                 if obj_id != 42:
-                    self.scene.add_box("obj"+str(obj_id), obj_pose, obj_dimensions)
+                    self.scene.add_box("obj" + str(obj_id), obj_pose,
+                                       obj_dimensions)
         except rospy.ROSException as e:
-            print("No object markers found. Not using any obstacles in planning")
+            print(
+                "No object markers found. Not using any obstacles in planning")
         self.add_part(object_pose)  # grasp for object 42
 
         # We need to wait for the object 'part' to appear
         self.wait_for_planning_scene_object()
 
         # compute grasps
-        possible_grasps = self.sg.create_grasps_from_object_pose(
-            object_pose, arm_conf, single=True)
+        possible_grasps = self.sg.create_grasps_from_object_pose(object_pose,
+                                                                 arm_conf,
+                                                                 single=True)
         goal = createPickupGoal(
-            arm_conf.group_arm, "part", object_pose, possible_grasps, self.links_to_allow_contact)
+            arm_conf.group_arm,
+            "part",
+            object_pose,
+            possible_grasps,
+            self.links_to_allow_contact,
+        )
         rospy.loginfo("Sending goal")
         self.pickup_ac.send_goal(goal)
         rospy.loginfo("Waiting for result")
         self.pickup_ac.wait_for_result()
         result = self.pickup_ac.get_result()
         rospy.logdebug("Using torso result: " + str(result))
-        rospy.loginfo("Pick result: " + str(
-            moveit_error_dict[result.error_code.val]) + "(" + str(result.error_code.val) + ")")
+        rospy.loginfo("Pick result: " +
+                      str(moveit_error_dict[result.error_code.val]) + "(" +
+                      str(result.error_code.val) + ")")
 
         # Remove objects that aren't necessary anymore
         if obj_markers is not None:
@@ -363,11 +430,15 @@ class PickAndPlaceServer(object):
                 obj_id = marker.id
                 # remove everything except '42' (="part" object to be grasped)
                 if obj_id != 42:
-                    self.scene.remove_world_object("obj"+str(obj_id))
+                    self.scene.remove_world_object("obj" + str(obj_id))
 
         return result.error_code.val
 
-    def place_object(self, arm_conf, object_pose, part="part", simple_place=False):
+    def place_object(self,
+                     arm_conf,
+                     object_pose,
+                     part="part",
+                     simple_place=False):
 
         rospy.loginfo("Clearing octomap")
         self.clear_octomap_srv.call(EmptyRequest())
@@ -375,29 +446,37 @@ class PickAndPlaceServer(object):
         # Get all objects to be used for planning using an object Marker Array
         print("Waiting for /obj_markers")
         try:
-            obj_markers = rospy.wait_for_message('/obj_markers', MarkerArray, timeout=3.)
+            obj_markers = rospy.wait_for_message("/obj_markers",
+                                                 MarkerArray,
+                                                 timeout=3.0)
             for marker in obj_markers.markers:
                 obj_id = marker.id
                 obj_pose = PoseStamped()
                 obj_pose.header = marker.header
                 obj_pose.pose = marker.pose
-                obj_dimensions = (marker.scale.x, marker.scale.y, marker.scale.z)
+                obj_dimensions = (marker.scale.x, marker.scale.y,
+                                  marker.scale.z)
                 # '42' is the main "part" object to be grasped
                 if obj_id != 42:
-                    self.scene.add_box("obj"+str(obj_id), obj_pose, obj_dimensions)
-                    self.wait_for_planning_scene_object("obj"+str(obj_id))
+                    self.scene.add_box("obj" + str(obj_id), obj_pose,
+                                       obj_dimensions)
+                    self.wait_for_planning_scene_object("obj" + str(obj_id))
         except rospy.ROSException as e:
-            print("No object markers found. Not using any obstacles in planning")
-        
+            print(
+                "No object markers found. Not using any obstacles in planning")
+
         possible_placings = self.sg.create_placings_from_object_pose(
             object_pose, simple_place, arm_conf)
-        rospy.loginfo(
-            "Trying to place with arm and torso")
-        rospy.loginfo(
-            "MOVE GROUP is:" + str(arm_conf.group_arm_torso))
+        rospy.loginfo("Trying to place with arm and torso")
+        rospy.loginfo("MOVE GROUP is:" + str(arm_conf.group_arm_torso))
         # Try with arm and torso
         goal = createPlaceGoal(
-            object_pose, possible_placings, arm_conf.group_arm_torso, part, self.links_to_allow_contact)
+            object_pose,
+            possible_placings,
+            arm_conf.group_arm_torso,
+            part,
+            self.links_to_allow_contact,
+        )
         rospy.loginfo("Sending goal")
         self.place_ac.send_goal(goal)
         rospy.loginfo("Waiting for result")
@@ -406,19 +485,18 @@ class PickAndPlaceServer(object):
         result = self.place_ac.get_result()
 
         # print result
-        rospy.loginfo(
-            "Result: " +
-            str(moveit_error_dict[result.error_code.val]))
+        rospy.loginfo("Result: " +
+                      str(moveit_error_dict[result.error_code.val]))
 
-    #         rospy.loginfo("Removing previous object: %s", part)
+        #         rospy.loginfo("Removing previous object: %s", part)
         # self.scene.remove_world_object(part)
-    #         # Also remove any old obstacles/tables (these will be added again as per the current grasp call)
-    #         self.scene.remove_world_object() # NOTE: this removes everything
+        #         # Also remove any old obstacles/tables (these will be added again as per the current grasp call)
+        #         self.scene.remove_world_object() # NOTE: this removes everything
 
         return result.error_code.val
 
 
-if __name__ == '__main__':
-    rospy.init_node('pick_and_place_server')
+if __name__ == "__main__":
+    rospy.init_node("pick_and_place_server")
     paps = PickAndPlaceServer()
     rospy.spin()
