@@ -1,6 +1,6 @@
 # Desired distance from grasp_postures_frame_id to put the object
 # So, the grasping point
-grasp_desired_distance: 0.21
+grasp_desired_distance: 0.22
 grasp_min_distance: 0.0
 # Times for the grasp, they are sumed step after step
 time_pre_grasp_posture: 4.0

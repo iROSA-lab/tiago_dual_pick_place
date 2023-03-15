@@ -468,29 +468,7 @@ class PickAndPlaceServer(object):
         possible_placings = self.sg.create_placings_from_object_pose(
             object_pose, simple_place, arm_conf)
         rospy.loginfo("Possible placings: %s", possible_placings)
-        # Create marker for each placing
-        self.placing_markers = MarkerArray()
-        placing_marker_pub = rospy.Publisher("/visualization_marker_array",
-                                             MarkerArray,
-                                             queue_size=1)
-        for i, placing in enumerate(possible_placings):
-            marker = Marker()
-            marker.header.frame_id = "base_footprint"
-            marker.ns = "placing"
-            marker.id = i
-            marker.type = Marker.CUBE
-            marker.action = Marker.ADD
-            marker.pose = placing.place_pose.pose
-            marker.scale.x = 0.1
-            marker.scale.y = 0.1
-            marker.scale.z = 0.1
-            marker.color.a = 1.0
-            marker.color.r = 0.0
-            marker.color.g = 1.0
-            marker.color.b = 0.0
-            self.placing_markers.markers.append(marker)
 
-        placing_marker_pub.publish(self.placing_markers)
         rospy.loginfo("Trying to place with arm and torso")
         rospy.loginfo("MOVE GROUP is:" + str(arm_conf.group_arm_torso))
         # Try with arm and torso
