@@ -437,6 +437,7 @@ class Grasps(object):
         pre_grasp_posture.points.append(jtpoint)
 
         # If simple_place is set to True, just use the posestamped provided (normally the object_pose/grasp_pose itself)
+        simple_place = True
         if simple_place:
             pl = PlaceLocation()
             pl.place_pose = posestamped
