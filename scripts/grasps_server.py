@@ -437,7 +437,6 @@ class Grasps(object):
         pre_grasp_posture.points.append(jtpoint)
 
         # If simple_place is set to True, just use the posestamped provided (normally the object_pose/grasp_pose itself)
-        simple_place = True
         if simple_place:
             pl = PlaceLocation()
             pl.place_pose = posestamped
@@ -446,6 +445,7 @@ class Grasps(object):
             pl.post_place_retreat = self.createGripperTranslation(
                 arm_conf.grasp_frame, Vector3(-1.0, 0.0, 0.0))
             pl.post_place_posture = pre_grasp_posture
+            pl.allowed_touch_objects = self._allowed_touch_objects
             place_locs.append(pl)
         else:
             # Generate all the orientations every step_degrees_yaw deg
@@ -464,6 +464,7 @@ class Grasps(object):
                     arm_conf.grasp_frame, Vector3(-1.0, 0.0, 0.0))
 
                 pl.post_place_posture = pre_grasp_posture
+                pl.allowed_touch_objects = self._allowed_touch_objects
                 place_locs.append(pl)
 
         return place_locs

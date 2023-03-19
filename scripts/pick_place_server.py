@@ -85,7 +85,7 @@ def createPlaceGoal(place_pose,
     placeg.planning_options.planning_scene_diff.robot_state.is_diff = True
     placeg.planning_options.plan_only = False
     placeg.planning_options.replan = True
-    placeg.planning_options.replan_attempts = 1
+    placeg.planning_options.replan_attempts = 5
     placeg.allowed_touch_objects = ['<octomap>']
     placeg.allowed_touch_objects.extend(links_to_allow_contact)
 
@@ -213,7 +213,7 @@ class PickAndPlaceServer(object):
             p_res.error_code = self.place_object(arm_conf,
                                                  goal.target_pose,
                                                  part=goal.object_name,
-                                                 simple_place=False)
+                                                 simple_place=True)
         else:
             rospy.logerr("Object %s not in gripper", goal.object_name)
             p_res.error_code = 99999
@@ -421,6 +421,7 @@ class PickAndPlaceServer(object):
 
         possible_placings = self.sg.create_placings_from_object_pose(
             object_pose, simple_place, arm_conf)
+        rospy.loginfo("Possible placings: %s", possible_placings)
         rospy.loginfo("Trying to place with arm and torso")
         rospy.loginfo("MOVE GROUP is:" + str(arm_conf.group_arm_torso))
         # Try with arm and torso
