@@ -1,11 +1,11 @@
 # Desired distance from grasp_postures_frame_id to put the object
 # So, the grasping point
-grasp_desired_distance: 0.20
+grasp_desired_distance: 0.23
 grasp_min_distance: 0.0
 # Times for the grasp, they are sumed step after step
-time_pre_grasp_posture: 2.0
-time_grasp_posture: 1.0
-time_grasp_posture_final: 3.0
+time_pre_grasp_posture: 4.0
+time_grasp_posture: 2.0
+time_grasp_posture_final: 5.0
 # Base frame of MoveIt for your robot
 grasp_pose_frame_id: base_footprint
 # Move groups
@@ -36,8 +36,8 @@ post_grasp_direction_x: -1.0
 post_grasp_direction_y: 0.0
 post_grasp_direction_z: 0.0
 
-max_contact_force: 0.0
-allowed_touch_objects: ''
+max_contact_force: 10.0
+allowed_touch_objects: 'box0, box1, box2, box3, box4, box5, box6, table'
 
 # Rotation to apply if you have unaligned
 # tool link to grasping frame
@@ -49,13 +49,13 @@ fix_tool_frame_to_grasping_frame_yaw: 0.0
 # in order to generate more or less poses these
 # parameters can be tuned
 # note: max is not included
-min_degrees_yaw: 0
-max_degrees_yaw: 1
-min_degrees_pitch: 90
-max_degrees_pitch: 180
+min_degrees_yaw: 90
+max_degrees_yaw: 270
+min_degrees_pitch: 0
+max_degrees_pitch: 360
 
 # The steps are the main thing to tune
-step_degrees_pitch: 15
-step_degrees_yaw: 15
+step_degrees_pitch: 45
+step_degrees_yaw: 45
 
 links_to_allow_contact: ["gripper_left_left_finger_link", "gripper_left_right_finger_link", "gripper_left_link", "gripper_right_left_finger_link", "gripper_right_right_finger_link", "gripper_right_link"]

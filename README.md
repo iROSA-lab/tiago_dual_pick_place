@@ -49,22 +49,8 @@ To pick two objects, first object with left arm, second object with right arm: `
 In this case a grasp pose (position and orientation) is directly given. Since the pipeline works with scene objects, a virtual object is constructed in the scene around the given pose and then picked up. Since this virtual object represents the grasp and not any actual object you can completely ignore the visualization.
 
 1. Publish message with pose of object:  
-`rostopic pub /grasp/pose geometry_gs/PoseStamped "header:
-  seq: 0
-  stamp:
-    secs: 0
-    nsecs: 0
-  frame_id: 'base_footprint'
-pose:
-  position:
-    x: 0.2
-    y: 0.2
-    z: 0.8
-  orientation:
-    x: 0.0
-    y: 0.0
-    z: 0.0
-    w: 0.0"`
+`rostopic pub /grasp/pose  geometry_msgs/PoseStamped '{header: {seq: 0, stamp: {secs: 0, nsecs: 0}, frame_id: base_footprint}, pose: {position: {x: 0.2, y: 0.2, z: 0.8},orientation: {x: 0.0, y: 0.0, z: 0.0, w: 0.0}}}'
+`
 (You need to change position and orientation for the desired grasp. These can also be defined in a different reference frame by changing 'frame_id'.)
 
 2. Call the pick service, in order to perform the actual grasp:
@@ -75,22 +61,8 @@ pose:
 Placing requires a target pose. If no target pose is sent within 10 seconds, the original pose of the object (before being picking up) is used.
 
 1. (Optional) Publish the pose for placing:  
-`rostopic pub /place/pose geometry_gs/PoseStamped "header:
-  seq: 0
-  stamp:
-    secs: 0
-    nsecs: 0
-  frame_id: 'base_footprint'
-pose:
-  position:
-    x: 0.2
-    y: 0.2
-    z: 0.8
-  orientation:
-    x: 0.0
-    y: 0.0
-    z: 0.0
-    w: 0.0"`
+`rostopic pub /place/pose  geometry_msgs/PoseStamped '{header: {seq: 0, stamp: {secs: 0, nsecs: 0}, frame_id: base_footprint}, pose: {position: {x: 0.2, y: 0.2, z: 0.8},orientation: {x: 0.0, y: 0.0, z: 0.0, w: 0.0}}}'
+`
 
 2. Call the place service, either by specifiying left/right arm or the object name:
     1. To place at the specified target pose (on timeout: the pickup pose): `rosservice call /place left`
