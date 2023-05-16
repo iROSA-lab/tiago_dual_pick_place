@@ -22,6 +22,7 @@
 #   * Jordi Pages
 #   * Daljeet Nandha
 
+import numpy as np
 import rospy
 from grasps_server import Grasps
 from arm_conf import ArmConf
@@ -32,6 +33,8 @@ from moveit_msgs.msg import PlaceAction, PlaceGoal, PlaceResult, PlaceLocation
 from geometry_msgs.msg import Pose, PoseStamped, PoseArray, Vector3Stamped, Vector3, Quaternion
 from tiago_dual_pick_place.msg import PlaceAutoObjectAction, PlaceAutoObjectResult, PickUpObjectAction, PickUpObjectResult, PickPlacePoseAction, PickPlacePoseResult
 from moveit_msgs.srv import GetPlanningScene, GetPlanningSceneRequest, GetPlanningSceneResponse
+from tf import transformations
+from tf.transformations import quaternion_from_euler, euler_from_quaternion, quaternion_about_axis, unit_vector, quaternion_multiply
 from visualization_msgs.msg import MarkerArray
 from std_srvs.srv import Empty, EmptyRequest
 from copy import deepcopy
@@ -275,7 +278,7 @@ class PickAndPlaceServer(object):
         rospy.loginfo("Removing any previous '"+str(object_name)+"' object")
         self.scene.remove_attached_object(grasp_frame)
         self.scene.remove_world_object(object_name)
-        rospy.sleep(2.0)  # Removing is fast
+        rospy.sleep(1.0)  # Removing is fast
 
     def add_part(self, object_pose, object_name="part"):
         rospy.loginfo("Adding new '"+str(object_name)+"' object")
@@ -311,15 +314,42 @@ class PickAndPlaceServer(object):
 
     def grasp(self, arm_conf, object_pose):
         # create scene object at pose of grasp
+        # Generate single grasp pose as object pose with (optionally) an offset 
+        
+        
+        # SJ Edit! add offset!
+        offset = 0.051 # We need this to account for grasp frame to tool frame offset!!!
+        x = object_pose.pose.position.x
+        y = object_pose.pose.position.y
+        z = object_pose.pose.position.z
+        objectTransMat = transformations.translation_matrix((x, y, z))
+        objectRotMat = transformations.quaternion_matrix((object_pose.pose.orientation.x,
+                                                          object_pose.pose.orientation.y,
+                                                          object_pose.pose.orientation.z,
+                                                          object_pose.pose.orientation.w))
+        objectMat = np.matmul(objectTransMat, objectRotMat)
+        # Add the offset IN the object frame
+        offsetMat = np.eye(4)
+        offsetMat[0, 3] = offset  # x offset
+        graspMat = np.matmul(objectMat, offsetMat)  # post multiply with offset
+        object_pose.pose.position.x = graspMat[0, 3]
+        object_pose.pose.position.y = graspMat[1, 3]
+        object_pose.pose.position.z = graspMat[2, 3]
+        rot_quat = transformations.quaternion_from_matrix(graspMat)
+        object_pose.pose.orientation.x = rot_quat[0]
+        object_pose.pose.orientation.y = rot_quat[1]
+        object_pose.pose.orientation.z = rot_quat[2]
+        object_pose.pose.orientation.w = rot_quat[3]
+        # End SJ Edit!
 
         # remove any old obstacles/tables (these will be added again as per the current grasp call)
-        self.remove_part(arm_conf.grasp_frame)
+        # self.remove_part(arm_conf.grasp_frame)
         self.scene.remove_world_object()  # NOTE: this removes everything!
 
         rospy.loginfo("Object pose: %s", object_pose.pose)
 
-        rospy.loginfo("Clearing octomap")
-        self.clear_octomap_srv.call(EmptyRequest())
+        # rospy.loginfo("Clearing octomap")
+        # self.clear_octomap_srv.call(EmptyRequest())
 
         rospy.loginfo("Second%s", object_pose.pose)
 

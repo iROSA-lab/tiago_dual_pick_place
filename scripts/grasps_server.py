@@ -177,7 +177,7 @@ class Grasps(object):
 
     def generate_single_grasp_pose(self, object_pose):
         # Generate single grasp pose as object pose with (optionally) an offset
-        offset = self._grasp_desired_distance
+        offset = self._grasp_desired_distance # We need this to account for grasp frame to tool frame offset!!!
         sphere_poses = []
 
         x = object_pose.pose.position.x
@@ -363,14 +363,14 @@ class Grasps(object):
         g.pre_grasp_approach.direction.vector.y = self._pre_grasp_direction_y  # NOQA
         g.pre_grasp_approach.direction.vector.z = self._pre_grasp_direction_z  # NOQA
         g.pre_grasp_approach.direction.header.frame_id = arm_conf.grasp_frame  # NOQA
-        g.pre_grasp_approach.desired_distance = self._grasp_desired_distance/1.5  # NOQA #TODO: remove hardcoding
+        g.pre_grasp_approach.desired_distance = self._grasp_desired_distance/1.25  # NOQA #TODO: remove hardcoding
         g.pre_grasp_approach.min_distance = self._grasp_min_distance
         g.post_grasp_retreat = GripperTranslation()
         g.post_grasp_retreat.direction.vector.x = self._post_grasp_direction_x  # NOQA
         g.post_grasp_retreat.direction.vector.y = self._post_grasp_direction_y  # NOQA
         g.post_grasp_retreat.direction.vector.z = self._post_grasp_direction_z  # NOQA
         g.post_grasp_retreat.direction.header.frame_id = arm_conf.grasp_frame  # NOQA
-        g.post_grasp_retreat.desired_distance = self._grasp_desired_distance/1.2  # NOQA #TODO: remove hardcoding
+        g.post_grasp_retreat.desired_distance = 0.0 # self._grasp_desired_distance/1.2  # NOQA #TODO: remove hardcoding
         g.post_grasp_retreat.min_distance = self._grasp_min_distance
 
         g.max_contact_force = self._max_contact_force

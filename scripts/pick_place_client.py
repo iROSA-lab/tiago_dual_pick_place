@@ -211,7 +211,9 @@ class PickPlace(object):
 
     def pick_simple(self, left_right):
         rospy.loginfo("Pick: Waiting for a grasp pose")
-        rospy.sleep(0.75)
+        
+        self.lower_torso()
+
         grasp_ps = self.wait_for_pose('/grasp/pose')
 
         pick_g = PickPlacePoseGoal()
@@ -233,24 +235,34 @@ class PickPlace(object):
         if str(moveit_error_dict[result.error_code]) != "SUCCESS":
             # if INVALIDATED_BY_ENVIRONMENT_CHANGE, just continue # TODO: Try to find out why this error occurs
             if str(moveit_error_dict[result.error_code]) != "MOTION_PLAN_INVALIDATED_BY_ENVIRONMENT_CHANGE":
-                rospy.logerr("Failed to pick, not trying further")
-                return result.error_code
+                if str(moveit_error_dict[result.error_code]) != "CONTROL_FAILED":
+                    rospy.logerr("Failed to pick, not trying further")
+                    return result.error_code
 
         # Move torso to its maximum height
         # self.lift_torso()
 
-        # Raise arm
-        rospy.loginfo("Moving arm to a safe pose")
-        pmg = PlayMotionGoal()
-        pmg.motion_name = 'pick_final_pose_' + left_right[0]  # take first char
-        print(pmg.motion_name)
-        pmg.skip_planning = False
-        rospy.loginfo("Sending raise arm command...")
-        self.play_m_as.send_goal_and_wait(pmg)
+        # # Raise arm
+        # rospy.loginfo("Moving arm to a safe pose")
+        # pmg = PlayMotionGoal()
+        # pmg.motion_name = 'pick_final_pose_' + left_right[0]  # take first char
+        # print(pmg.motion_name)
+        # pmg.skip_planning = False
+        # rospy.loginfo("Sending final arm command...")
+        # self.play_m_as.send_goal_and_wait(pmg)
+        # rospy.sleep(1.0)
 
-        # Save pose for optional immediate placing back
-        self.place_g[left_right] = copy.deepcopy(pick_g)
-        self.place_g[left_right].object_pose.pose.position.z += 0.0125
+        # # Open grippers
+        # rospy.loginfo("Opening grippers")
+        # pmg = PlayMotionGoal()
+        # pmg.motion_name = 'open_gripper_' + left_right[0]  # take first char
+        # print(pmg.motion_name)
+        # pmg.skip_planning = True
+        # self.play_m_as.send_goal_and_wait(pmg)
+
+        # # Save pose for optional immediate placing back
+        # self.place_g[left_right] = copy.deepcopy(pick_g)
+        # self.place_g[left_right].object_pose.pose.position.z += 0.0125
 
         return result.error_code
 
@@ -339,7 +351,17 @@ class PickPlace(object):
         jt = JointTrajectory()
         jt.joint_names = ['torso_lift_joint']
         jtp = JointTrajectoryPoint()
-        jtp.positions = [0.34]
+        jtp.positions = [0.24]
+        jtp.time_from_start = rospy.Duration(2.5)
+        jt.points.append(jtp)
+        self.torso_cmd.publish(jt)
+    
+    def lower_torso(self):
+        rospy.loginfo("Moving torso down")
+        jt = JointTrajectory()
+        jt.joint_names = ['torso_lift_joint']
+        jtp = JointTrajectoryPoint()
+        jtp.positions = [0.1]
         jtp.time_from_start = rospy.Duration(2.5)
         jt.points.append(jtp)
         self.torso_cmd.publish(jt)
