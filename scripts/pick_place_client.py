@@ -212,7 +212,7 @@ class PickPlace(object):
     def pick_simple(self, left_right):
         rospy.loginfo("Pick: Waiting for a grasp pose")
         
-        self.lower_torso()
+        # self.lower_torso()
 
         grasp_ps = self.wait_for_pose('/grasp/pose')
 
@@ -227,6 +227,10 @@ class PickPlace(object):
 
         self.detected_pose_pub.publish(pick_g.object_pose)
         rospy.loginfo("Gonna pick:" + str(pick_g))
+
+        # Optional: prepare robot
+        # self.prepare_robot(left_right)
+        # rospy.sleep(2.0)
 
         self.pick_as.send_goal_and_wait(pick_g)
         rospy.loginfo("Done!")

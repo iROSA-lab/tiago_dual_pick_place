@@ -1,5 +1,3 @@
-### Modified params for Robotiq gripper
-
 # Desired distance from grasp_postures_frame_id to put the object
 # So, the grasping point
 grasp_desired_distance: 0.20
@@ -7,7 +5,7 @@ grasp_min_distance: 0.0
 # Times for the grasp, they are sumed step after step
 time_pre_grasp_posture: 2.0
 time_grasp_posture: 1.0
-time_grasp_posture_final: 3.6
+time_grasp_posture_final: 3.0
 # Base frame of MoveIt for your robot
 grasp_pose_frame_id: base_footprint
 # Move groups
@@ -19,14 +17,14 @@ move_group_r1:  arm_right_torso
 grasp_postures_frame_id_l: arm_left_tool_link
 grasp_postures_frame_id_r: arm_right_tool_link
 # Gripper joint poses
-gripper_joint_names_l: "gripper_left_finger_joint"
-gripper_joint_names_r: "gripper_right_finger_joint"
+gripper_joint_names_l: "gripper_left_left_finger_joint gripper_left_right_finger_joint"
+gripper_joint_names_r: "gripper_right_left_finger_joint gripper_right_right_finger_joint"
 # Currently unused grasp quality to put in the message
 grasp_quality: 0.1
 # Closed position
-gripper_grasp_positions: "0.0" # Full is 0.8
+gripper_grasp_positions: "0.011 0.011"
 # Open position
-gripper_pre_grasp_positions: "0.0"
+gripper_pre_grasp_positions: "0.038 0.038"
 
 # Direction in reference of the grasp_postures_frame_id
 pre_grasp_direction_x: 1.0
@@ -60,23 +58,4 @@ max_degrees_pitch: 180
 step_degrees_pitch: 15
 step_degrees_yaw: 15
 
-links_to_allow_contact: ["gripper_left_left_inner_finger",
-                         "gripper_left_right_inner_finger",
-                         "gripper_left_left_inner_finger_pad",
-                         "gripper_left_right_inner_finger_pad",
-                         "gripper_left_left_inner_knuckle",
-                         "gripper_left_right_inner_knuckle",
-                         "gripper_left_left_outer_finger",
-                         "gripper_left_right_outer_finger",
-                         "gripper_left_left_outer_knuckle",
-                         "gripper_left_right_outer_knuckle",
-                         "gripper_right_left_inner_finger",
-                         "gripper_right_right_inner_finger",
-                         "gripper_right_left_inner_finger_pad",
-                         "gripper_right_right_inner_finger_pad",
-                         "gripper_right_left_inner_knuckle",
-                         "gripper_right_right_inner_knuckle",
-                         "gripper_right_left_outer_finger",
-                         "gripper_right_right_outer_finger",
-                         "gripper_right_left_outer_knuckle",
-                         "gripper_right_right_outer_knuckle"]
+links_to_allow_contact: ["gripper_left_left_finger_link", "gripper_left_right_finger_link", "gripper_left_link", "gripper_right_left_finger_link", "gripper_right_right_finger_link", "gripper_right_link"]

@@ -1,11 +1,15 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <launch>
-
+    <!-- Useful commands: -->
+    <!-- source ~/ros_master_122.sh -->
+    <!-- source ~/tiago_core/catkin_ws/devel/setup.bash -->
+    <!-- rosservice call /pal_navigation_sm "input: 'MAP'" -->
+    <!-- rostopic echo /move_base/current_goal     -->
     <node name="base_placement_rviz" pkg="rviz" type="rviz" args="-d $(find tiago_dual_pick_place)/../../../tiago_resources/base_placement.rviz" />
 
     <node name="tiago_rqt" pkg="rqt_gui" type="rqt_gui"/>
 
-    <node name="navigation_rviz" pkg="rviz" type="rviz" args="-d `rospack find tiago_dual_2dnav`/config/rviz/advanced_navigation.rviz" />
+    <node name="navigation_rviz" pkg="rviz" type="rviz" args="-d $(find tiago_dual_2dnav)/config/rviz/advanced_navigation.rviz" />
 
     <include file="$(find tiago_dual_pick_place)/launch/pick_place.launch" />
 
