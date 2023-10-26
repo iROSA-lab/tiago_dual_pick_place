@@ -31,6 +31,7 @@ from moveit_commander import PlanningSceneInterface
 from moveit_msgs.msg import Grasp, PickupAction, PickupGoal, PickupResult, MoveItErrorCodes
 from moveit_msgs.msg import PlaceAction, PlaceGoal, PlaceResult, PlaceLocation
 from geometry_msgs.msg import Pose, PoseStamped, PoseArray, Vector3Stamped, Vector3, Quaternion
+from sensor_msgs.msg import PointCloud2
 from tiago_dual_pick_place.msg import PlaceAutoObjectAction, PlaceAutoObjectResult, PickUpObjectAction, PickUpObjectResult, PickPlacePoseAction, PickPlacePoseResult
 from moveit_msgs.srv import GetPlanningScene, GetPlanningSceneRequest, GetPlanningSceneResponse
 from tf import transformations
@@ -167,6 +168,32 @@ class PickAndPlaceServer(object):
 
         # Initialize grasp generator
         self.sg = Grasps()
+
+        # Optional: Octomap for obstacle avoidance
+        self.camera_type = 'xtion' # 'zed'
+        if self.camera_type == 'zed':
+            # get the pointcloud from the topic
+            self.pcl_topic_name = '/zed2/zed_node/point_cloud/cloud_registered'
+        elif self.camera_type == 'xtion':
+            self.pcl_topic_name = '/xtion/depth_registered/points'
+        self.octomap_topic_name="/filtered_points_for_mapping"
+        self.octomap_pub = rospy.Publisher(self.octomap_topic_name, PointCloud2, queue_size=1, latch=True)
+
+    def forward_pcl_sub_cback(self, ros_point_cloud):
+        # forward the point cloud to the moveit octomap server topic (defined in the sensor yaml file)
+        self.octomap_pub.publish(ros_point_cloud)
+
+    def start_mapping(self):
+		# start forwarding the point cloud to the moveit octomap server topic
+        self.forward_pcl_sub = rospy.Subscriber(self.pcl_topic_name, PointCloud2, self.forward_pcl_sub_cback, queue_size=1)
+		# # Clear existing octomap here?
+		# rospy.sleep(1.0)
+		# rospy.loginfo("Clearing octomap")
+		# self.clear_octomap_srv.call(EmptyRequest())
+
+    def stop_mapping(self):
+        # stop forwarding the point cloud to the moveit octomap server topic
+        self.forward_pcl_sub.unregister()
 
     def pick_obj_cb(self, goal):
         """
@@ -317,30 +344,30 @@ class PickAndPlaceServer(object):
         # Generate single grasp pose as object pose with (optionally) an offset 
         
         
-        # SJ Edit! add offset!
-        offset = 0.051 # We need this to account for grasp frame to tool frame offset!!!
-        x = object_pose.pose.position.x
-        y = object_pose.pose.position.y
-        z = object_pose.pose.position.z
-        objectTransMat = transformations.translation_matrix((x, y, z))
-        objectRotMat = transformations.quaternion_matrix((object_pose.pose.orientation.x,
-                                                          object_pose.pose.orientation.y,
-                                                          object_pose.pose.orientation.z,
-                                                          object_pose.pose.orientation.w))
-        objectMat = np.matmul(objectTransMat, objectRotMat)
-        # Add the offset IN the object frame
-        offsetMat = np.eye(4)
-        offsetMat[0, 3] = offset  # x offset
-        graspMat = np.matmul(objectMat, offsetMat)  # post multiply with offset
-        object_pose.pose.position.x = graspMat[0, 3]
-        object_pose.pose.position.y = graspMat[1, 3]
-        object_pose.pose.position.z = graspMat[2, 3]
-        rot_quat = transformations.quaternion_from_matrix(graspMat)
-        object_pose.pose.orientation.x = rot_quat[0]
-        object_pose.pose.orientation.y = rot_quat[1]
-        object_pose.pose.orientation.z = rot_quat[2]
-        object_pose.pose.orientation.w = rot_quat[3]
-        # End SJ Edit!
+        # # SJ ROBOTIQ Edit! add offset!
+        # offset = 0.051 # We need this to account for grasp frame to tool frame offset!!!
+        # x = object_pose.pose.position.x
+        # y = object_pose.pose.position.y
+        # z = object_pose.pose.position.z
+        # objectTransMat = transformations.translation_matrix((x, y, z))
+        # objectRotMat = transformations.quaternion_matrix((object_pose.pose.orientation.x,
+        #                                                   object_pose.pose.orientation.y,
+        #                                                   object_pose.pose.orientation.z,
+        #                                                   object_pose.pose.orientation.w))
+        # objectMat = np.matmul(objectTransMat, objectRotMat)
+        # # Add the offset IN the object frame
+        # offsetMat = np.eye(4)
+        # offsetMat[0, 3] = offset  # x offset
+        # graspMat = np.matmul(objectMat, offsetMat)  # post multiply with offset
+        # object_pose.pose.position.x = graspMat[0, 3]
+        # object_pose.pose.position.y = graspMat[1, 3]
+        # object_pose.pose.position.z = graspMat[2, 3]
+        # rot_quat = transformations.quaternion_from_matrix(graspMat)
+        # object_pose.pose.orientation.x = rot_quat[0]
+        # object_pose.pose.orientation.y = rot_quat[1]
+        # object_pose.pose.orientation.z = rot_quat[2]
+        # object_pose.pose.orientation.w = rot_quat[3]
+        # # End SJ Edit!
 
         # remove any old obstacles/tables (these will be added again as per the current grasp call)
         # self.remove_part(arm_conf.grasp_frame)
@@ -350,8 +377,13 @@ class PickAndPlaceServer(object):
 
         # rospy.loginfo("Clearing octomap")
         # self.clear_octomap_srv.call(EmptyRequest())
+        # rospy.loginfo("Second%s", object_pose.pose)
 
-        rospy.loginfo("Second%s", object_pose.pose)
+        # Optional: Use octomap to plan around obstacles
+        # self.start_mapping()
+        # rospy.loginfo("Clearing octomap and building new one")
+        # self.clear_octomap_srv.call(EmptyRequest())
+        # rospy.sleep(2.0)
 
         # Get all objects to be used for planning using an object Marker Array
         obj_markers = None
@@ -373,6 +405,10 @@ class PickAndPlaceServer(object):
         # We need to wait for the object 'part' to appear
         self.wait_for_planning_scene_object()
 
+        # Stop octomap mapping otherwise it will consider its own arm as an obstacle in the octomap
+        # rospy.sleep(2.0)
+        # self.stop_mapping()
+
         # compute grasps
         possible_grasps = self.sg.create_grasps_from_object_pose(
             object_pose, arm_conf, single=True)
@@ -388,12 +424,12 @@ class PickAndPlaceServer(object):
             moveit_error_dict[result.error_code.val]) + "(" + str(result.error_code.val) + ")")
 
         # Remove objects that aren't necessary anymore
-        if obj_markers is not None:
-            for marker in obj_markers.markers:
-                obj_id = marker.id
-                # remove everything except '42' (="part" object to be grasped)
-                if obj_id != 42:
-                    self.scene.remove_world_object("obj"+str(obj_id))
+        # if obj_markers is not None:
+        #     for marker in obj_markers.markers:
+        #         obj_id = marker.id
+        #         # remove everything except '42' (="part" object to be grasped)
+        #         if obj_id != 42:
+        #             self.scene.remove_world_object("obj"+str(obj_id))
 
         return result.error_code.val
 

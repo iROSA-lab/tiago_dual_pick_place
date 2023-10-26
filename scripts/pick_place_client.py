@@ -212,9 +212,10 @@ class PickPlace(object):
     def pick_simple(self, left_right):
         rospy.loginfo("Pick: Waiting for a grasp pose")
         
-        # self.lower_torso()
-
         grasp_ps = self.wait_for_pose('/grasp/pose')
+
+        self.lower_torso()
+        rospy.sleep(3.5)
 
         pick_g = PickPlacePoseGoal()
         pick_g.left_right = left_right
@@ -244,7 +245,26 @@ class PickPlace(object):
                     return result.error_code
 
         # Move torso to its maximum height
-        # self.lift_torso()
+        self.lift_torso()
+
+        # Lower torso back and place object back
+        # sleep for 4 seconds
+        rospy.sleep(4.0)
+        self.lower_torso()
+        rospy.sleep(3.0)
+
+        # Open grippers
+        rospy.loginfo("Opening grippers")
+        pmg = PlayMotionGoal()
+        pmg.motion_name = 'open_gripper_' + left_right[0]  # take first char
+        print(pmg.motion_name)
+        pmg.skip_planning = True
+        self.play_m_as.send_goal_and_wait(pmg)
+
+        # Move torso to its maximum height
+        self.lift_torso()
+
+        # OR
 
         # # Raise arm
         # rospy.loginfo("Moving arm to a safe pose")
@@ -255,14 +275,6 @@ class PickPlace(object):
         # rospy.loginfo("Sending final arm command...")
         # self.play_m_as.send_goal_and_wait(pmg)
         # rospy.sleep(1.0)
-
-        # # Open grippers
-        # rospy.loginfo("Opening grippers")
-        # pmg = PlayMotionGoal()
-        # pmg.motion_name = 'open_gripper_' + left_right[0]  # take first char
-        # print(pmg.motion_name)
-        # pmg.skip_planning = True
-        # self.play_m_as.send_goal_and_wait(pmg)
 
         # # Save pose for optional immediate placing back
         # self.place_g[left_right] = copy.deepcopy(pick_g)
@@ -365,7 +377,7 @@ class PickPlace(object):
         jt = JointTrajectory()
         jt.joint_names = ['torso_lift_joint']
         jtp = JointTrajectoryPoint()
-        jtp.positions = [0.1]
+        jtp.positions = [0.14]
         jtp.time_from_start = rospy.Duration(2.5)
         jt.points.append(jtp)
         self.torso_cmd.publish(jt)
