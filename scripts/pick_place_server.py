@@ -317,8 +317,8 @@ class PickAndPlaceServer(object):
         # Generate single grasp pose as object pose with (optionally) an offset 
         
         
-        # SJ Edit! add offset!
-        offset = 0.051 # We need this to account for grasp frame to tool frame offset!!!
+        # SJ Edit! add offset! -- change: only needed for robotiq
+        offset = 0.051  # We need this to account for grasp frame to tool frame offset!!!
         x = object_pose.pose.position.x
         y = object_pose.pose.position.y
         z = object_pose.pose.position.z

@@ -49,6 +49,7 @@ from arm_conf import ArmConf
 
 
 def normalize(v):
+    rospy.loginfo("normalize")
     norm = np.linalg.norm(v)
     if norm == 0:
         return v
@@ -58,6 +59,7 @@ def normalize(v):
 
 
 def quaternion_from_vectors(v0, v1):
+    rospy.loginfo("quaternion_from_vectors")
     if type(v0) == Point():
         v0 = [v0.x, v0.y, v0.z]
     if type(v1) == Point():
@@ -92,6 +94,8 @@ def filter_poses(sphere_poses, object_pose,
         list of Pose
     :type object_pose: PoseStamped
     :rtype: []"""
+
+    rospy.loginfo("filter_poses")
     new_list = []
     for pose in sphere_poses:
         # if pose is further away than object, ditch it
@@ -109,6 +113,7 @@ def filter_poses(sphere_poses, object_pose,
 
 def sort_by_height(sphere_poses):
     # We prefer to grasp from top to be safer
+    rospy.loginfo("sort_by_height")
     newlist = sorted(
         sphere_poses, key=lambda item: item.position.z, reverse=False)
     sorted_list = newlist
@@ -176,6 +181,7 @@ class Grasps(object):
         return config
 
     def generate_single_grasp_pose(self, object_pose):
+        rospy.loginfo("generate_single_grasp_pose")
         # Generate single grasp pose as object pose with (optionally) an offset
         offset = self._grasp_desired_distance # We need this to account for grasp frame to tool frame offset!!!
         sphere_poses = []
@@ -205,6 +211,7 @@ class Grasps(object):
         return sphere_poses
 
     def generate_grasp_poses(self, object_pose):
+        rospy.loginfo("generate_grasp_poses")
         # Compute all the points of the sphere with step X
         # http://math.stackexchange.com/questions/264686/how-to-find-the-3d-coordinates-on-a-celestial-spheres-surface
         radius = self._grasp_desired_distance
@@ -225,7 +232,7 @@ class Grasps(object):
             " to " + str(self._max_degrees_pitch) + \
             " with step " + str(self._step_degrees_pitch) + " degrees.\n" + \
             "Total: " + str(yaw_qtty) + " yaw * " + str(pitch_qtty) + \
-            " pitch = " + str(yaw_qtty * pitch_qtty) + " grap poses."
+            " pitch = " + str(yaw_qtty * pitch_qtty) + " grasp poses."
         rospy.loginfo(info_str)
 
         # altitude is yaw
@@ -265,6 +272,7 @@ class Grasps(object):
         return sphere_poses
 
     def publish_grasps(self, grasps):
+        rospy.loginfo("publish_grasps")
         pa = PoseArray()
         pa.header.frame_id = self._grasp_pose_frame_id
         pa.header.stamp = rospy.Time.now()
@@ -273,6 +281,7 @@ class Grasps(object):
         self.grasps_pub.publish(pa)
 
     def publish_poses(self, sphere_poses):
+        rospy.loginfo("publish_poses")
         pa = PoseArray()
         pa.header.frame_id = self._grasp_pose_frame_id
         pa.header.stamp = rospy.Time.now()
@@ -281,6 +290,7 @@ class Grasps(object):
         self.poses_pub.publish(pa)
 
     def publish_object_marker(self, object_pose, width=0.03):
+        rospy.loginfo("publish_object_marker")
         m = Marker()
         m.action = m.ADD
         m.color.r = 1.0
@@ -300,6 +310,7 @@ class Grasps(object):
         :type sphere_poses: []
             [] of Pose
         """
+        rospy.loginfo("create_grasps_from_poses")
         grasps = []
         for idx, pose in enumerate(sphere_poses):
             grasps.append(self.create_grasp(
@@ -314,6 +325,7 @@ class Grasps(object):
             name for the grasp
         :rtype: Grasp
         """
+        rospy.loginfo("create_grasp")
         g = Grasp()
         g.id = grasp_id
 
@@ -382,6 +394,7 @@ class Grasps(object):
         """
         :type object_pose: PoseStamped
         """
+        rospy.loginfo("create_grasps_from_object_poses")
         tini = rospy.Time.now()
         if single:
             # Only generate single grasp pose (the object pose with (optionally) an offset)
@@ -404,6 +417,7 @@ class Grasps(object):
 
     def create_placings_from_object_pose(self, posestamped, simple_place, arm_conf):
         """ Create a list of PlaceLocation of the object rotated every 15deg"""
+        rospy.loginfo("create_placings_from_object_pose")
         place_locs = []
         pre_grasp_posture = JointTrajectory()
         # Actually ignored....
@@ -453,6 +467,7 @@ class Grasps(object):
          direction_vector and desired_distance and min_distance in it.
         Intended to be used to fill the pre_grasp_approach
          and post_grasp_retreat field in the Grasp message."""
+        rospy.loginfo("createGripperTranslation")
         g_trans = GripperTranslation()
         g_trans.direction.header.frame_id = frame_id
         g_trans.direction.header.stamp = rospy.Time.now()
