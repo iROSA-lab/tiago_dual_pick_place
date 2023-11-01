@@ -45,10 +45,17 @@ from tf.transformations import quaternion_from_euler, euler_from_quaternion, qua
 
 from dynamic_reconfigure.server import Server
 from tiago_dual_pick_place.cfg import GraspsConfig
-from arm_conf import ArmConf
+from arm_conf import ArmConf  # unused
 
 
 def normalize(v):
+    """
+    The normalize function takes a vector as input and returns the vector divided by its norm.
+
+    :param v: Pass the vector to be normalized
+    :return: The normalized vector of the input
+    :doc-author: Trelent
+    """
     rospy.loginfo("normalize")
     norm = np.linalg.norm(v)
     if norm == 0:
@@ -59,6 +66,14 @@ def normalize(v):
 
 
 def quaternion_from_vectors(v0, v1):
+    """
+    The quaternion_from_vectors function takes two vectors and returns a quaternion that represents the rotation from v0 to v1.
+
+    :param v0: first vector
+    :param v1: second vector
+    :return: A quaternion
+    :doc-author: Trelent
+    """
     rospy.loginfo("quaternion_from_vectors")
     if type(v0) == Point():
         v0 = [v0.x, v0.y, v0.z]
@@ -89,7 +104,7 @@ def filter_poses(sphere_poses, object_pose,
                  filter_behind=False,
                  filter_under=True):
     """Given the generated poses and the object pose
-    filter out the poses that are behind or under (if set to True)
+    filter out the poses that are behind or under the object (if set to True)
     :type sphere_poses: []
         list of Pose
     :type object_pose: PoseStamped
@@ -112,6 +127,13 @@ def filter_poses(sphere_poses, object_pose,
 
 
 def sort_by_height(sphere_poses):
+    """
+    The sort_by_height function takes in a list of sphere poses and sorts them by height (z).
+
+    :param sphere_poses: Store the poses of all spheres
+    :return: A list of sphere poses sorted by height
+    :doc-author: Trelent
+    """
     # We prefer to grasp from top to be safer
     rospy.loginfo("sort_by_height")
     newlist = sorted(
@@ -121,12 +143,13 @@ def sort_by_height(sphere_poses):
 
 
 class Grasps(object):
-    def __init__(self):
+    def __init__(self, gripper_type):
         rospy.loginfo("Initializing Grasps...")
 
         # Get server parameters from param server by using dynamic reconfigure
         # This is an advantage as you can test your grasp configuration
         # dynamically
+        self.gripper_type = gripper_type
         self.dyn_rec_srv = Server(GraspsConfig, self.dyn_rec_callback)
 
         # Setup Markers for debugging
@@ -142,8 +165,8 @@ class Grasps(object):
     def dyn_rec_callback(self, config, level):
 
         rospy.loginfo("Received reconf call: " + str(config))
-        self._gripper_pre_grasp_positions = config["gripper_pre_grasp_positions"]
-        self._gripper_grasp_positions = config["gripper_grasp_positions"]
+        self._gripper_pre_grasp_positions = config[f"gripper_pre_grasp_positions_{self.gripper_type}"]
+        self._gripper_grasp_positions = config[f"gripper_grasp_positions_{self.gripper_type}"]
         self._time_pre_grasp_posture = config["time_pre_grasp_posture"]
         self._time_grasp_posture = config["time_grasp_posture"]
         self._time_grasp_posture_final = config["time_grasp_posture_final"]
@@ -272,6 +295,14 @@ class Grasps(object):
         return sphere_poses
 
     def publish_grasps(self, grasps):
+        """
+        The publish_grasps function publishes the grasps to a ROS topic.
+
+        :param self: Refer to the object itself
+        :param grasps: Publish the grasps in a posearray message
+        :return: A posearray of the grasp poses
+        :doc-author: Trelent
+        """
         rospy.loginfo("publish_grasps")
         pa = PoseArray()
         pa.header.frame_id = self._grasp_pose_frame_id
@@ -281,6 +312,16 @@ class Grasps(object):
         self.grasps_pub.publish(pa)
 
     def publish_poses(self, sphere_poses):
+        """
+        The publish_poses function takes a list of sphere poses and publishes them to the /sphere_poses topic.
+        The function is called by the callback function for the /sphere_pose service, which is defined in __init__.
+
+
+        :param self: Access the class variables and methods
+        :param sphere_poses: Publish the poses of the spheres
+        :return: A posearray message, which is just a list of poses
+        :doc-author: Trelent
+        """
         rospy.loginfo("publish_poses")
         pa = PoseArray()
         pa.header.frame_id = self._grasp_pose_frame_id
@@ -290,6 +331,15 @@ class Grasps(object):
         self.poses_pub.publish(pa)
 
     def publish_object_marker(self, object_pose, width=0.03):
+        """
+        The publish_object_marker function publishes a marker to visualize the object pose.
+
+        :param self: Access the class attributes
+        :param object_pose: Get the pose of the object
+        :param width: Set the size of the marker
+        :return: A marker
+        :doc-author: Trelent
+        """
         rospy.loginfo("publish_object_marker")
         m = Marker()
         m.action = m.ADD
@@ -307,8 +357,14 @@ class Grasps(object):
 
     def create_grasps_from_poses(self, sphere_poses, arm_conf):
         """
-        :type sphere_poses: []
-            [] of Pose
+        The create_grasps_from_poses function takes in a list of poses and an arm configuration,
+        and returns a list of grasps. Each grasp is created by calling the create_grasp function.
+
+        :param self: Grasps instance
+        :param sphere_poses: Pass in a list of poses
+        :param arm_conf: Set the arm configuration for the grasp
+        :return: A list of grasp objects
+        :doc-author: Trelent
         """
         rospy.loginfo("create_grasps_from_poses")
         grasps = []
@@ -319,11 +375,14 @@ class Grasps(object):
 
     def create_grasp(self, pose, grasp_id, arm_conf):
         """
-        :type pose: Pose
-            pose of the gripper for the grasp
-        :type grasp_id: str
-            name for the grasp
-        :rtype: Grasp
+        The create_grasp function creates a grasp for the given pose.
+
+        :param self: Grasps instance
+        :param pose: Set the position of the gripper
+        :param grasp_id: Name the grasp
+        :param arm_conf: Specify the frame_id for the grasp
+        :return: A Grasp object
+        :doc-author: Trelent
         """
         rospy.loginfo("create_grasp")
         g = Grasp()
@@ -392,7 +451,17 @@ class Grasps(object):
 
     def create_grasps_from_object_pose(self, object_pose, arm_conf, single=True):
         """
-        :type object_pose: PoseStamped
+        The create_grasps_from_object_pose function takes in an object pose and arm configuration,
+        and returns a list of Grasp messages. The function first generates a set of grasp poses by calling the generate_grasp_poses function.
+        The generate_grasp_poses function uses the parameters defined in the config file to create a set of grasp poses around an object's center point.
+        The create grasps from object pose then filters out any invalid grasp poses using filter poses, sorts them by height using sort by height, and finally creates Grasp messages for each valid pose.
+
+        :param self: Grasps instance
+        :param object_pose: Get the object pose in order to create grasps around it
+        :param arm_conf: Set the arm configuration
+        :param single: Determine whether the grasp pose is generated from a single point or multiple points
+        :return: A list of grasps
+        :doc-author: Trelent
         """
         rospy.loginfo("create_grasps_from_object_poses")
         tini = rospy.Time.now()
@@ -416,7 +485,20 @@ class Grasps(object):
         return grasps
 
     def create_placings_from_object_pose(self, posestamped, simple_place, arm_conf):
-        """ Create a list of PlaceLocation of the object rotated every 15deg"""
+        """
+        The create_placings_from_object_pose function creates a list of PlaceLocation objects from the object_pose.
+        The function takes in an object_pose, simple_place, and arm configuration as parameters. The simple place
+        parameter is set to True if we want to use the grasp pose itself as a place location (i.e., no rotation). If it
+        is False, then we rotate the grasp pose by 15 degrees every time until 2*pi radians have been rotated around
+        yaw axis.
+
+        :param self: Grasps instance
+        :param posestamped: list of place poses
+        :param simple_place: Determine whether to use the object_pose/grasp_pose as a place location
+        :param arm_conf: Get the grasp_frame, which is used to create a translation for the gripper
+        :return: A list of PlaceLocation objects
+        :doc-author: Trelent
+        """
         rospy.loginfo("create_placings_from_object_pose")
         place_locs = []
         pre_grasp_posture = JointTrajectory()

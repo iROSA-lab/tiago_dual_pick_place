@@ -28,8 +28,12 @@ By default a spherical grasp generator is used. This generator creates possible 
 ### (Optional) Launch simulation
 `roslaunch tiago_dual_pick_place pick_place_sim.launch`
 
+By default the pal-gripper is used as end-effector.
+
 ### Launch Pick & Place pipeline
 `roslaunch tiago_dual_pick_place pick_place.launch`
+
+Optional gripper argument: as of right now, pal-gripper is the default and the other available option is robotiq. 
 
 This command starts both the Pick & Place server and client.
 
@@ -95,3 +99,9 @@ pose:
 2. Call the place service, either by specifiying left/right arm or the object name:
     1. To place at the specified target pose (on timeout: the pickup pose): `rosservice call /place left`
     2. To place an object with the name 'Box_0' at the specified pose (on timeout: the pickup pose): `rosservice call /place_object 'Box_0'`
+
+
+### Choosing different end-effectors
+Should you want to use a different end-effector, you would have to go through the following steps:
+1. Add the corresponding pre-grasp and grasp positions to cfg/Grasps.cfg and use catkin build to make your changes effective.
+2. Add a pick_motions and pick_place_params file to the config folder with the adjusted gripper specifications.

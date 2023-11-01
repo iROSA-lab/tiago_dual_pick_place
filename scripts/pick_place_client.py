@@ -139,6 +139,16 @@ class PickPlace(object):
 
     # TODO: decide which arm by some sort of optimization
     def pick_object(self, object_name, left_right):
+        """
+        The pick_object function is used to pick up an object. It makes the robot prepare, executes the pick motion
+        and saves the pose to be able to place the object back in the future.
+
+        :param self: class instance
+        :param object_name: Specify the name of the object to be picked
+        :param left_right: Determine which arm to use
+        :return: The error_code
+        :doc-author: Trelent
+        """
         # Move torso to its maximum height
         self.lift_torso()
 
@@ -175,6 +185,19 @@ class PickPlace(object):
         return result.error_code
 
     def pick_objects(self, left_object_name, right_object_name):
+        """
+        The pick_objects function is used to pick up objects from the world. It takes in two arguments:
+        left_object_name and right_object_name, which are strings that represent the names of objects in the Gazebo
+        world. The function first moves the torso to its maximum height, then prepares the robot for picking by
+        moving its arms into a safe position. Next, it sends goals to moveit! using actionlib and waits for them to
+        complete before sending another goal. Finally, it raises both arms into a safe pose.
+
+        :param self: Refer to the object itself
+        :param left_object_name: Specify the name of the object to be picked up with the left arm
+        :param right_object_name: Specify the name of the object to be picked up by the right arm
+        :return: The error code of the pick_obj_as action server
+        :doc-author: Trelent
+        """
         # Move torso to its maximum height
         self.lift_torso()
 
@@ -210,25 +233,37 @@ class PickPlace(object):
         return result.error_code
 
     def pick_simple(self, left_right):
+        """
+        The pick_simple function is a simple pick function that takes in the left_right argument and uses it to
+        determine which arm to use. It then waits for a grasp pose, lowers the torso, creates a PickPlacePoseGoal
+        object with the grasp pose as its position and orientation, and sends this goal to the pick action server. It
+        then lifts the torso again before lowering it back down after 4 seconds. Finally, it opens both grippers.
+
+        :param self: Represent the instance of the class
+        :param left_right: Determine which arm to use
+        :return: The resulting error code
+        :doc-author: Trelent
+        """
         rospy.loginfo("Pick: Waiting for a grasp pose")
         
-        # self.lower_torso()
-
         grasp_ps = self.wait_for_pose('/grasp/pose')
+
+        self.lower_torso()
+        rospy.sleep(3.5)
 
         pick_g = PickPlacePoseGoal()
         pick_g.left_right = left_right
         pick_g.object_pose.pose = grasp_ps.pose
-        #pick_g.object_pose.pose.position = grasp_ps.pose.position
-        #pick_g.object_pose.pose.position.z -= 0.1*(1.0/2.0)
-        #pick_g.object_pose.pose.orientation.w = 1.0
+        # pick_g.object_pose.pose.position = grasp_ps.pose.position
+        # pick_g.object_pose.pose.position.z -= 0.1*(1.0/2.0)
+        # pick_g.object_pose.pose.orientation.w = 1.0
         rospy.loginfo("grasp pose in base_footprint:" + str(pick_g))
         pick_g.object_pose.header.frame_id = 'base_footprint'
 
         self.detected_pose_pub.publish(pick_g.object_pose)
         rospy.loginfo("Gonna pick:" + str(pick_g))
 
-        # Optional: prepare robot
+        # Optional: prepare robot # TODO: why optional? assume that robot is already prepared?
         # self.prepare_robot(left_right)
         # rospy.sleep(2.0)
 
@@ -243,8 +278,28 @@ class PickPlace(object):
                     rospy.logerr("Failed to pick, not trying further")
                     return result.error_code
 
+        # TODO: huh?
         # Move torso to its maximum height
-        # self.lift_torso()
+        self.lift_torso()
+
+        # Lower torso back and place object back
+        # sleep for 4 seconds
+        rospy.sleep(4.0)
+        self.lower_torso()
+        rospy.sleep(3.0)
+
+        # Open grippers
+        rospy.loginfo("Opening grippers")
+        pmg = PlayMotionGoal()
+        pmg.motion_name = 'open_gripper_' + left_right[0]  # take first char
+        print(pmg.motion_name)
+        pmg.skip_planning = True
+        self.play_m_as.send_goal_and_wait(pmg)
+
+        # Move torso to its maximum height
+        self.lift_torso()
+
+        # OR
 
         # # Raise arm
         # rospy.loginfo("Moving arm to a safe pose")
@@ -256,14 +311,6 @@ class PickPlace(object):
         # self.play_m_as.send_goal_and_wait(pmg)
         # rospy.sleep(1.0)
 
-        # # Open grippers
-        # rospy.loginfo("Opening grippers")
-        # pmg = PlayMotionGoal()
-        # pmg.motion_name = 'open_gripper_' + left_right[0]  # take first char
-        # print(pmg.motion_name)
-        # pmg.skip_planning = True
-        # self.play_m_as.send_goal_and_wait(pmg)
-
         # # Save pose for optional immediate placing back
         # self.place_g[left_right] = copy.deepcopy(pick_g)
         # self.place_g[left_right].object_pose.pose.position.z += 0.0125
@@ -271,6 +318,19 @@ class PickPlace(object):
         return result.error_code
 
     def wait_for_pose(self, topic, timeout=None):
+        """
+        The wait_for_pose function is used to transform a pose from one frame to another.
+        The function takes in two arguments: the topic and timeout.
+        The topic argument is the name of the ROS topic that contains a PoseStamped message, which will be transformed
+        into base_footprint frame.
+        If no message has been received on this topic within timeout seconds, then None will be returned.
+
+        :param self: Refer to the object itself
+        :param topic: Specify the topic to listen for a posestamped message on
+        :param timeout: Set a time limit on how long the function will wait for a message
+        :return: A posestamped object
+        :doc-author: Trelent
+        """
         try:
             grasp_pose = rospy.wait_for_message(
                 topic, PoseStamped, timeout=timeout)
@@ -310,6 +370,16 @@ class PickPlace(object):
         return ps_trans
 
     def place_object(self, object_name):
+        """
+        The place_object function is used to place an object in a desired location.
+        The function takes the name of the object as input and places it at a pre-defined location.
+        If no pre-defined location exists, then the user can define one by publishing to /place/pose topic.
+
+        :param self: Represent the instance of the class
+        :param object_name: Identify the object that is being placed
+        :return: An error code
+        :doc-author: Trelent
+        """
         rospy.loginfo("Start placing %s", object_name)
         goal = PlaceAutoObjectGoal()
 
@@ -336,6 +406,15 @@ class PickPlace(object):
         return result.error_code
 
     def place_simple(self, left_right):
+        """
+        The place_simple function is a function that takes in the left_right parameter and then waits for a place pose.
+        If there is no place pose set, it will try to place back where it was (by using previous place_g). If there is a
+        place pose, it will receive the place pose and add an offset of 0.0125 to not crash into other objects.
+
+        :param self: Refer to the object itself
+        :param left_right: Determine which arm to use
+        :doc-author: Trelent
+        """
         rospy.loginfo("Place: Waiting for a place pose")
         place_pose = self.wait_for_pose('/place/pose', timeout=1.0)
         if place_pose is None:
@@ -351,6 +430,12 @@ class PickPlace(object):
         rospy.loginfo("Done!")
 
     def lift_torso(self):
+        """
+        The lift_torso function moves the torso up to a height of 0.24 meters.
+    
+        :param self: Refer to the object itself
+        :doc-author: Trelent
+        """
         rospy.loginfo("Moving torso up")
         jt = JointTrajectory()
         jt.joint_names = ['torso_lift_joint']
@@ -361,16 +446,30 @@ class PickPlace(object):
         self.torso_cmd.publish(jt)
     
     def lower_torso(self):
+        """    
+        The lower_torso function moves the torso down to a position of 0.14 radians.
+
+        :param self: Represent the instance of the class
+        :return: A jointtrajectory object
+        :doc-author: Trelent
+        """
         rospy.loginfo("Moving torso down")
         jt = JointTrajectory()
         jt.joint_names = ['torso_lift_joint']
         jtp = JointTrajectoryPoint()
-        jtp.positions = [0.1]
+        jtp.positions = [0.14]
         jtp.time_from_start = rospy.Duration(2.5)
         jt.points.append(jtp)
         self.torso_cmd.publish(jt)
 
     def lower_head(self):
+        """
+        The lower_head function moves the head down and left.
+
+
+        :param self: Represent the instance of the class
+        :doc-author: Trelent
+        """
         rospy.loginfo("Moving head down and left")
         jt = JointTrajectory()
         jt.joint_names = ['head_1_joint', 'head_2_joint']
@@ -382,6 +481,15 @@ class PickPlace(object):
         rospy.loginfo("Done.")
 
     def prepare_robot(self, left_right):
+        """
+        The prepare_robot function is used to prepare the robot for grasping by unfolding the arm. It uses the
+        play_motion pregrasp_{l/r}.
+
+        :param self: Refer to the instance of the class
+        :param left_right: Determine which arm to use
+        :doc-author: Trelent
+        """
+        # TODO: maybe adjust to be able to do both arms at the same time?
         rospy.loginfo("Unfold arm safely")
         pmg = PlayMotionGoal()
         pmg.motion_name = 'pregrasp_' + left_right[0]

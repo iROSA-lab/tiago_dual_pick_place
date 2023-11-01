@@ -2,11 +2,11 @@
 <launch>
 
   <arg name="rviz"  default="true"/>
-  <arg name="gripper"  default="pal-gripper"/>
+  <arg name="gripper"  default="pal_gripper"/>
 
 
   <!-- Load definition of pregrasp motion into play_motion namespace -->
-  <rosparam command="load" file="$(find tiago_dual_pick_place)/config/pick_motions.yaml" /> 
+  <rosparam command="load" file="$(find tiago_dual_pick_place)/config/pick_motions_$(arg gripper).yaml" />
 
   <!-- Pick & place server -->
   <node name="pick_place_server" pkg="tiago_dual_pick_place" type="pick_place_server.py" output="screen">

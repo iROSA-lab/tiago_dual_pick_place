@@ -1,0 +1,139 @@
+play_motion:
+  motions:
+    home_up_l:
+      joints: [arm_left_1_joint, arm_left_2_joint, arm_left_3_joint, arm_left_4_joint, arm_left_5_joint, arm_left_6_joint, arm_left_7_joint,
+      torso_lift_joint]
+      points:
+        - time_from_start: 0
+          positions: [-1.1, -0.48, 2.714, 2.05, -1.57, 1.3898, 0, 0.35]
+        - time_from_start: 3
+          positions: [-1.1, 1.4679, 2.714, 2.05, -1.57, 1.3898, 0, 0.35]
+        - time_from_start: 4.5
+          positions: [-1.1, 1.4679, 2.714, 2.05, -1.57, 1.3898, 0, 0.35]
+      meta:
+        name: Home Up, Left
+        usage: Pick and Place
+        description: Go home, full torso up (only left arm)
+    pregrasp_l:
+      joints: [torso_lift_joint,
+      arm_left_1_joint, arm_left_2_joint, arm_left_3_joint, arm_left_4_joint, arm_left_5_joint, arm_left_6_joint, arm_left_7_joint]
+      points:
+        - time_from_start: 3
+          positions: [0.328947714811, 0.216551795731, -0.331692162107, 1.10785426737, 1.48047195803, 1.25781456086, -1.23424311931, 0]
+        - time_from_start: 8
+          positions: [0.300191759511, -0.105528373975, 0.0331966019585, 1.67266245343, 1.99142153377, 1.34660245069, 0.381137167222, -1.37112793762]
+      meta:
+        name: PreGrasp, Left
+        usage: Pick and Place
+        description: Go into pre-grasping position
+    pick_final_pose_l:
+      joints: [arm_left_1_joint, arm_left_2_joint, arm_left_3_joint, arm_left_4_joint, arm_left_5_joint, arm_left_6_joint, arm_left_7_joint, torso_lift_joint]
+      points:  
+        - time_from_start: 4
+          positions: [0.70, -0.36, 2.22, 1.65, 1.37, 0.88, -0.77, 0.25]
+
+          # positions: [-0.89, 0.04, 2.56, 1.88, 0.17, 1.00, -0.44, 0.25]
+          # positions: [-0.67, 0.06, 2.02, 1.65, 0.55, 0.52, -0.63, 0.25]
+
+          # positions: [-0.28, 0.51, 1.04, 1.90, -0.85, -0.48, 0.24]
+          # positions: [-0.4, -0.08, 1.54, 1.84, -1.99, -0.33, -1.24]
+          # positions: [0.137411578255, -0.530967093396, 1.16117230914, 1.83919500778, -1.8773838724, 0.758184956361, -0.619751812536]
+      meta:
+        name: Pick final pose, Left
+        usage: Pick and Place
+        description: Go into final pose after picking
+
+    home_up_r:
+      joints: [arm_right_1_joint, arm_right_2_joint, arm_right_3_joint, arm_right_4_joint, arm_right_5_joint, arm_right_6_joint, arm_right_7_joint,
+      torso_lift_joint]
+      points:
+        - time_from_start: 0
+          positions: [-1.1, -0.48, 2.714, 2.05, -1.57, 1.3898, 0, 0.35]
+        - time_from_start: 3
+          positions: [-1.1, 1.4679, 2.714, 2.05, -1.57, 1.3898, 0, 0.35]
+        - time_from_start: 4.5
+          positions: [-1.1, 1.4679, 2.714, 2.05, -1.57, 1.3898, 0, 0.35]
+      meta:
+        name: Home Up, Right
+        usage: Pick and Place
+        description: Go home, full torso up (only right arm)
+    pregrasp_r:
+      joints: [torso_lift_joint,
+      arm_right_1_joint, arm_right_2_joint, arm_right_3_joint, arm_right_4_joint, arm_right_5_joint, arm_right_6_joint, arm_right_7_joint]
+      points:
+        - time_from_start: 3
+          positions: [0.328947714811, 0.216551795731, -0.331692162107, 1.10785426737, 1.48047195803, 1.25781456086, -1.23424311931, 0]
+        - time_from_start: 8
+          positions: [0.300191759511, -0.105528373975, 0.0331966019585, 1.67266245343, 1.99142153377, 1.34660245069, 0.381137167222, -1.37112793762]
+      meta:
+        name: PreGrasp, Right
+        usage: Pick and Place
+        description: Go into pre-grasping position
+    pick_final_pose_r:
+      joints: [arm_right_1_joint, arm_right_2_joint, arm_right_3_joint, arm_right_4_joint, arm_right_5_joint, arm_right_6_joint, arm_right_7_joint, torso_lift_joint]
+      points:  
+        - time_from_start: 10
+          positions: [-0.89, 0.04, 2.56, 1.88, 0.17, 1.00, -0.44, 0.25]
+          # positions: [-0.67, 0.06, 2.02, 1.65, 0.55, 0.52, -0.63, 0.25]
+
+          # positions: [-0.28, 0.51, 1.04, 1.90, -0.85, -0.48, 0.24]
+          # positions: [-0.4, -0.08, 1.54, 1.84, -1.99, -0.33, -1.24]
+          # positions: [0.137411578255, -0.530967093396, 1.16117230914, 1.83919500778, -1.8773838724, 0.758184956361, -0.619751812536]
+      meta:
+        name: Pick final pose, Right
+        usage: Pick and Place
+        description: Go into final pose after picking
+    prep_l:
+      joints: [arm_left_1_joint, arm_left_2_joint, arm_left_3_joint, arm_left_4_joint, arm_left_5_joint, arm_left_6_joint, arm_left_7_joint, torso_lift_joint]
+      points:
+        - time_from_start: 3
+          positions: [-1.10, 1.35, 1.82, 2.28, -2.07, 0.29, 0.50, 0.225]
+      meta:
+        name: Prep, Left
+        usage: Pick and Place
+        description: Go into pre-grasping position
+    prep_r:
+      joints: [arm_right_1_joint, arm_right_2_joint, arm_right_3_joint, arm_right_4_joint, arm_right_5_joint, arm_right_6_joint, arm_right_7_joint]
+      points:
+        - time_from_start: 3
+          positions: [-1.10, 1.35, 1.82, 2.28, -2.07, 0.29, 0.50]
+      meta:
+        name: Prep, Right
+        usage: Pick and Place
+        description: Go into pre-grasping position
+    open_gripper_l:
+      joints: [gripper_left_left_finger_joint, gripper_left_right_finger_joint]
+      points:
+        - time_from_start: 0.5
+          positions: [0.038, 0.038]
+      meta:
+        name: Open Gripper, Left
+        usage: Pick and Place
+        description: Open the gripper
+    open_gripper_r:
+      joints: [gripper_right_left_finger_joint, gripper_right_right_finger_joint]
+      points:
+        - time_from_start: 0.5
+          positions: [0.038, 0.038]
+      meta:
+        name: Open Gripper, Right
+        usage: Pick and Place
+        description: Open the gripper
+    lower_torso:
+      joints: [torso_lift_joint]
+      points:
+        - time_from_start: 0.7
+          positions: [0.1]
+      meta:
+        name: Lower Torso
+        usage: Pick and Place
+        description: Lower the torso
+    raise_torso:
+      joints: [torso_lift_joint]
+      points:
+        - time_from_start: 0.7
+          positions: [0.25]
+      meta:
+        name: Raise Torso
+        usage: Pick and Place
+        description: Raise the torso

@@ -31,6 +31,7 @@ from moveit_commander import PlanningSceneInterface
 from moveit_msgs.msg import Grasp, PickupAction, PickupGoal, PickupResult, MoveItErrorCodes
 from moveit_msgs.msg import PlaceAction, PlaceGoal, PlaceResult, PlaceLocation
 from geometry_msgs.msg import Pose, PoseStamped, PoseArray, Vector3Stamped, Vector3, Quaternion
+from sensor_msgs.msg import PointCloud2
 from tiago_dual_pick_place.msg import PlaceAutoObjectAction, PlaceAutoObjectResult, PickUpObjectAction, PickUpObjectResult, PickPlacePoseAction, PickPlacePoseResult
 from moveit_msgs.srv import GetPlanningScene, GetPlanningSceneRequest, GetPlanningSceneResponse
 from tf import transformations
@@ -134,6 +135,8 @@ class PickAndPlaceServer(object):
             rospy.get_param('~gripper_joint_names_r')
         )
 
+        self.gripper_type = rospy.get_param('~gripper_type')
+
         # Get the links of the end effector exclude from collisions
         self.links_to_allow_contact = rospy.get_param(
             '~links_to_allow_contact', None)
@@ -166,7 +169,56 @@ class PickAndPlaceServer(object):
         self.place_obj_as.start()
 
         # Initialize grasp generator
-        self.sg = Grasps()
+        self.sg = Grasps(self.gripper_type)
+
+        # Optional: Octomap for obstacle avoidance
+        self.camera_type = 'xtion' # 'zed'
+        if self.camera_type == 'zed':
+            # get the pointcloud from the topic
+            self.pcl_topic_name = '/zed2/zed_node/point_cloud/cloud_registered'
+        elif self.camera_type == 'xtion':
+            self.pcl_topic_name = '/xtion/depth_registered/points'
+        self.octomap_topic_name="/filtered_points_for_mapping"
+        self.octomap_pub = rospy.Publisher(self.octomap_topic_name, PointCloud2, queue_size=1, latch=True)
+
+    def forward_pcl_sub_cback(self, ros_point_cloud):
+        # forward the point cloud to the moveit octomap server topic (defined in the sensor yaml file)
+        """
+        The forward_pcl_sub_cback function is a callback function that subscribes to the point cloud topic
+            and publishes it to the octomap server. This allows for dynamic updates of the octomap in MoveIt!.
+
+        :param self: Represent the instance of a class
+        :param ros_point_cloud: Pass the point cloud data to the callback function
+        :doc-author: Trelent
+        """
+        self.octomap_pub.publish(ros_point_cloud)
+
+    def start_mapping(self):
+        # start forwarding the point cloud to the moveit octomap server topic
+        """
+        The start_mapping function starts the mapping process.
+        It does this by subscribing to the point cloud topic and forwarding it to the moveit octomap server topic.
+
+
+        :param self: Represent the instance of the class
+        :doc-author: Trelent
+        """
+        self.forward_pcl_sub = rospy.Subscriber(self.pcl_topic_name, PointCloud2, self.forward_pcl_sub_cback, queue_size=1)
+        # # Clear existing octomap here?
+        # rospy.sleep(1.0)
+        # rospy.loginfo("Clearing octomap")
+        # self.clear_octomap_srv.call(EmptyRequest())
+
+    def stop_mapping(self):
+        # stop forwarding the point cloud to the moveit octomap server topic
+        """
+        The stop_mapping function stops the mapping process by unregistering the point cloud subscriber.
+
+
+        :param self: Represent the instance of the class
+        :doc-author: Trelent
+        """
+        self.forward_pcl_sub.unregister()
 
     def pick_obj_cb(self, goal):
         """
@@ -264,6 +316,16 @@ class PickAndPlaceServer(object):
         rospy.loginfo("'" + object_name + "'' is in scene!")
 
     def get_object_pose(self, object_name):
+        """
+        The get_object_pose function is used to get the pose of an object in the world.
+        It takes as input a string representing the name of an object, and returns a PoseStamped message containing its
+        pose.
+
+        :param self: Represent the instance of the class
+        :param object_name: Find the object in the scene
+        :return: The pose of the object in the base_footprint frame
+        :doc-author: Trelent
+        """
         rospy.loginfo("Looking for object: %s", object_name)
         obj_poses = self.scene.get_object_poses([object_name])
         if len(obj_poses) < 1:
@@ -275,18 +337,46 @@ class PickAndPlaceServer(object):
         return object_pose
 
     def remove_part(self, grasp_frame, object_name="part"):
+        """
+        The remove_part function removes any previous 'part' (object) from the planning scene.
+        It does this by removing the attached object from a grasp frame and then removing
+        the world object itself.
+
+        :param self: Represent the instance of the class
+        :param grasp_frame: Specify the frame of reference for the object being grasped
+        :param object_name: Specify the name of the object to be removed
+        :doc-author: Trelent
+        """
         rospy.loginfo("Removing any previous '"+str(object_name)+"' object")
         self.scene.remove_attached_object(grasp_frame)
         self.scene.remove_world_object(object_name)
         rospy.sleep(1.0)  # Removing is fast
 
     def add_part(self, object_pose, object_name="part"):
+        """
+        The add_part function adds a new part to the scene.
+
+        :param self: Represent the instance of the class
+        :param object_pose: Define the pose of the object in the scene
+        :param object_name: Name the object
+        :doc-author: Trelent
+        """
         rospy.loginfo("Adding new '"+str(object_name)+"' object")
         # Add object description in scene
         self.scene.add_box(object_name, object_pose,
                            (self.object_depth, self.object_width, self.object_height))
 
     def grasp_object(self, arm_conf, object_pose, part="part"):
+        """
+        The grasp_object function is used to grasp an object.
+
+        :param self: Represent the instance of the class
+        :param arm_conf: Specify which arm to use
+        :param object_pose: Specify the pose of the object to be grasped
+        :param part: Specify the name of the object part that is being grasped
+        :return: The error code of the pick up action
+        :doc-author: Trelent
+        """
         rospy.loginfo("Clearing octomap")
         self.clear_octomap_srv.call(EmptyRequest())
 
@@ -315,43 +405,60 @@ class PickAndPlaceServer(object):
     def grasp(self, arm_conf, object_pose):
         # create scene object at pose of grasp
         # Generate single grasp pose as object pose with (optionally) an offset 
-        
-        
+
         # SJ Edit! add offset! -- change: only needed for robotiq
-        offset = 0.051  # We need this to account for grasp frame to tool frame offset!!!
-        x = object_pose.pose.position.x
-        y = object_pose.pose.position.y
-        z = object_pose.pose.position.z
-        objectTransMat = transformations.translation_matrix((x, y, z))
-        objectRotMat = transformations.quaternion_matrix((object_pose.pose.orientation.x,
-                                                          object_pose.pose.orientation.y,
-                                                          object_pose.pose.orientation.z,
-                                                          object_pose.pose.orientation.w))
-        objectMat = np.matmul(objectTransMat, objectRotMat)
-        # Add the offset IN the object frame
-        offsetMat = np.eye(4)
-        offsetMat[0, 3] = offset  # x offset
-        graspMat = np.matmul(objectMat, offsetMat)  # post multiply with offset
-        object_pose.pose.position.x = graspMat[0, 3]
-        object_pose.pose.position.y = graspMat[1, 3]
-        object_pose.pose.position.z = graspMat[2, 3]
-        rot_quat = transformations.quaternion_from_matrix(graspMat)
-        object_pose.pose.orientation.x = rot_quat[0]
-        object_pose.pose.orientation.y = rot_quat[1]
-        object_pose.pose.orientation.z = rot_quat[2]
-        object_pose.pose.orientation.w = rot_quat[3]
-        # End SJ Edit!
+
+        # # SJ ROBOTIQ Edit! add offset!
+        # offset = 0.051 # We need this to account for grasp frame to tool frame offset!!!
+        # x = object_pose.pose.position.x
+        # y = object_pose.pose.position.y
+        # z = object_pose.pose.position.z
+        # objectTransMat = transformations.translation_matrix((x, y, z))
+        # objectRotMat = transformations.quaternion_matrix((object_pose.pose.orientation.x,
+        #                                                   object_pose.pose.orientation.y,
+        #                                                   object_pose.pose.orientation.z,
+        #                                                   object_pose.pose.orientation.w))
+        # objectMat = np.matmul(objectTransMat, objectRotMat)
+        # # Add the offset IN the object frame
+        # offsetMat = np.eye(4)
+        # offsetMat[0, 3] = offset  # x offset
+        # graspMat = np.matmul(objectMat, offsetMat)  # post multiply with offset
+        # object_pose.pose.position.x = graspMat[0, 3]
+        # object_pose.pose.position.y = graspMat[1, 3]
+        # object_pose.pose.position.z = graspMat[2, 3]
+        # rot_quat = transformations.quaternion_from_matrix(graspMat)
+        # object_pose.pose.orientation.x = rot_quat[0]
+        # object_pose.pose.orientation.y = rot_quat[1]
+        # object_pose.pose.orientation.z = rot_quat[2]
+        # object_pose.pose.orientation.w = rot_quat[3]
+        # # End SJ Edit!
 
         # remove any old obstacles/tables (these will be added again as per the current grasp call)
         # self.remove_part(arm_conf.grasp_frame)
+        """
+        The grasp function takes in an arm configuration and object pose, and returns a MoveIt error code.
+        The function first removes any old obstacles/tables (these will be added again as per the current grasp call).
+        Then it creates a scene object at the pose of the grasp. It then computes grasps using create_grasps_from_object_pose() from sg.py, which is called with single=True to generate only one grasp pose for each object orientation (the default behavior is to generate multiple grasps for each orientation). The function then sends this goal to pickup action server, waits for result
+
+        :param self: Access variables that belong to the class
+        :param arm_conf: Define the arm to be used for grasping
+        :param object_pose: Specify the pose of the object to be grasped
+        :return: A moveit error code
+        :doc-author: Trelent
+        """
         self.scene.remove_world_object()  # NOTE: this removes everything!
 
         rospy.loginfo("Object pose: %s", object_pose.pose)
 
         # rospy.loginfo("Clearing octomap")
         # self.clear_octomap_srv.call(EmptyRequest())
+        # rospy.loginfo("Second%s", object_pose.pose)
 
-        rospy.loginfo("Second%s", object_pose.pose)
+        # Optional: Use octomap to plan around obstacles
+        # self.start_mapping()
+        # rospy.loginfo("Clearing octomap and building new one")
+        # self.clear_octomap_srv.call(EmptyRequest())
+        # rospy.sleep(2.0)
 
         # Get all objects to be used for planning using an object Marker Array
         obj_markers = None
@@ -373,6 +480,10 @@ class PickAndPlaceServer(object):
         # We need to wait for the object 'part' to appear
         self.wait_for_planning_scene_object()
 
+        # Stop octomap mapping otherwise it will consider its own arm as an obstacle in the octomap
+        # rospy.sleep(2.0)
+        # self.stop_mapping()
+
         # compute grasps
         possible_grasps = self.sg.create_grasps_from_object_pose(
             object_pose, arm_conf, single=True)
@@ -388,17 +499,29 @@ class PickAndPlaceServer(object):
             moveit_error_dict[result.error_code.val]) + "(" + str(result.error_code.val) + ")")
 
         # Remove objects that aren't necessary anymore
-        if obj_markers is not None:
-            for marker in obj_markers.markers:
-                obj_id = marker.id
-                # remove everything except '42' (="part" object to be grasped)
-                if obj_id != 42:
-                    self.scene.remove_world_object("obj"+str(obj_id))
+        # if obj_markers is not None:
+        #     for marker in obj_markers.markers:
+        #         obj_id = marker.id
+        #         # remove everything except '42' (="part" object to be grasped)
+        #         if obj_id != 42:
+        #             self.scene.remove_world_object("obj"+str(obj_id))
 
         return result.error_code.val
 
     def place_object(self, arm_conf, object_pose, part="part", simple_place=False):
+        """
+        The place_object function is used to place an object in the world.
+        It takes as input a PoseStamped of the object, and a string representing which part of the robot should be used for placing (e.g., &quot;right_arm&quot; or &quot;left_arm&quot;).
+        The function then calls createPlaceGoal() to generate a MoveIt! goal that will be sent to moveit_msgs/PlaceActionServer. The server will attempt to find IK solutions for each possible placement pose, and if it finds one it will execute that trajectory on the real robot.
 
+        :param self: Access the class variables and methods
+        :param arm_conf: Specify which arm to use for the place action
+        :param object_pose: Specify the pose of the object to be placed
+        :param part: Specify the name of the object to be placed
+        :param simple_place: Determine whether to use the simple_place service or not
+        :return: A moveit error code
+        :doc-author: Trelent
+        """
         rospy.loginfo("Clearing octomap")
         self.clear_octomap_srv.call(EmptyRequest())
 
