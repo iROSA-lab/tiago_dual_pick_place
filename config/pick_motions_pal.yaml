@@ -102,19 +102,19 @@ play_motion:
         usage: Pick and Place
         description: Go into pre-grasping position
     open_gripper_l:
-      joints: [gripper_left_finger_joint]
+      joints: [gripper_left_left_finger_joint, gripper_left_right_finger_joint]
       points:
         - time_from_start: 0.5
-          positions: [0.0]
+          positions: [0.038, 0.038]
       meta:
         name: Open Gripper, Left
         usage: Pick and Place
         description: Open the gripper
     open_gripper_r:
-      joints: [gripper_right_finger_joint]
+      joints: [gripper_right_left_finger_joint, gripper_right_right_finger_joint]
       points:
         - time_from_start: 0.5
-          positions: [0.0]
+          positions: [0.038, 0.038]
       meta:
         name: Open Gripper, Right
         usage: Pick and Place

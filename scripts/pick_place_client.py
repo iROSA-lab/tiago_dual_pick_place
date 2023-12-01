@@ -214,8 +214,9 @@ class PickPlace(object):
         
         grasp_ps = self.wait_for_pose('/grasp/pose')
 
-        self.lower_torso()
-        rospy.sleep(3.5)
+        # Optional: prepare torso
+        # self.lower_torso()
+        # rospy.sleep(3.5)
 
         pick_g = PickPlacePoseGoal()
         pick_g.left_right = left_right
@@ -244,25 +245,26 @@ class PickPlace(object):
                     rospy.logerr("Failed to pick, not trying further")
                     return result.error_code
 
-        # Move torso to its maximum height
-        self.lift_torso()
+        # # OPTIONAL: Post pick actions
+        # # Move torso to its maximum height
+        # self.lift_torso()
 
-        # Lower torso back and place object back
-        # sleep for 4 seconds
-        rospy.sleep(4.0)
-        self.lower_torso()
-        rospy.sleep(3.0)
+        # # Lower torso back and place object back
+        # # sleep for 4 seconds
+        # rospy.sleep(4.0)
+        # self.lower_torso()
+        # rospy.sleep(3.0)
 
-        # Open grippers
-        rospy.loginfo("Opening grippers")
-        pmg = PlayMotionGoal()
-        pmg.motion_name = 'open_gripper_' + left_right[0]  # take first char
-        print(pmg.motion_name)
-        pmg.skip_planning = True
-        self.play_m_as.send_goal_and_wait(pmg)
+        # # Open grippers
+        # rospy.loginfo("Opening grippers")
+        # pmg = PlayMotionGoal()
+        # pmg.motion_name = 'open_gripper_' + left_right[0]  # take first char
+        # print(pmg.motion_name)
+        # pmg.skip_planning = True
+        # self.play_m_as.send_goal_and_wait(pmg)
 
-        # Move torso to its maximum height
-        self.lift_torso()
+        # # Move torso to its maximum height
+        # self.lift_torso()
 
         # OR
 
